@@ -1,0 +1,107 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-sans: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-serif: 'Cormorant Garamond', Georgia, serif;
+  --font-editorial: 'Cormorant Garamond', Georgia, serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Architectural Dark Palette */
+  --color-charcoal-deep: #0e1015;
+  --color-charcoal-base: #14161f;
+  --color-charcoal-surface: #1a1d28;
+  --color-charcoal-elevated: #222634;
+  --color-charcoal-border: rgba(255, 255, 255, 0.08);
+
+  /* Architectural Light Palette (Warm Ivory & Natural Stone) */
+  --color-ivory: #faf8f5;
+  --color-ivory-surface: #ffffff;
+  --color-stone-warm: #f2eee6;
+  --color-stone-muted: #e7e2d7;
+  --color-stone-border: rgba(30, 32, 40, 0.1);
+  --color-ink-primary: #12141a;
+  --color-ink-secondary: #4a4d57;
+  --color-ink-muted: #747783;
+
+  /* Refined Accent: Muted Architectural Bronze */
+  --color-bronze: #bfa37c;
+  --color-bronze-light: #d6be9c;
+  --color-bronze-dark: #9e825d;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    font-family: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+  
+  body {
+    background-color: #0e1015;
+    color: #e8e9ed;
+    font-family: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  h1, h2, h3, h4, .font-display {
+    font-family: 'Manrope', sans-serif;
+    letter-spacing: -0.02em;
+  }
+
+  .font-serif, .font-editorial {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+  }
+
+  code, pre, .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+/* Light Theme Architectural Grid Pattern */
+.bg-light-grid {
+  background-size: 40px 40px;
+  background-image: 
+    linear-gradient(to right, rgba(20, 22, 30, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(20, 22, 30, 0.04) 1px, transparent 1px);
+}
+
+/* Dark Theme Architectural Grid Pattern */
+.bg-dark-grid {
+  background-size: 40px 40px;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0e1015;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #252833;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #bfa37c;
+}
+
+/* Subtle glow effects & custom utilities */
+.glow-bronze {
+  box-shadow: 0 0 35px -5px rgba(191, 163, 124, 0.18);
+}
+
+/* Hide scrollbar for clean horizontal scrolls */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+

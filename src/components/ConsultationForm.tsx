@@ -16,8 +16,13 @@ import {
   Globe
 } from 'lucide-react';
 import { soundManager } from '../utils/sound';
+import { ToastType } from './ToastViewport';
 
-export const ConsultationForm: React.FC = () => {
+interface ConsultationFormProps {
+  onNotify?: (toast: { type: ToastType; title: string; message?: string }) => void;
+}
+
+export const ConsultationForm: React.FC<ConsultationFormProps> = ({ onNotify }) => {
   const [submitted, setSubmitted] = useState<boolean>(false);
   const [selectedService, setSelectedService] = useState<string>('Architecture & Villa Design');
   const [showCalendlyModal, setShowCalendlyModal] = useState<boolean>(false);
@@ -56,6 +61,11 @@ export const ConsultationForm: React.FC = () => {
     e.preventDefault();
     soundManager.playGenerativeShimmer();
     setSubmitted(true);
+    onNotify?.({
+      type: 'success',
+      title: 'Brief sent',
+      message: 'Your project inquiry has been received.',
+    });
 
     try {
       confetti({

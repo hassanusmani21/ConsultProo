@@ -10,16 +10,33 @@ import { ConsultationForm } from './components/ConsultationForm';
 import { Footer } from './components/Footer';
 import { CustomCursor } from './components/CustomCursor';
 import { GridOverlay } from './components/GridOverlay';
+import { PageLoader } from './components/PageLoader';
+import { ToastMessage, ToastType, ToastViewport } from './components/ToastViewport';
 import { soundManager } from './utils/sound';
 
 export default function App() {
   const [activeDestination, setActiveDestination] = useState<string>('work');
   const [gridActive, setGridActive] = useState<boolean>(true);
   const [cursorText, setCursorText] = useState<string | undefined>(undefined);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+
+  const notify = (toast: { type: ToastType; title: string; message?: string }) => {
+    const id = Date.now();
+    setToasts((current) => [...current, { id, ...toast }].slice(-4));
+    window.setTimeout(() => {
+      setToasts((current) => current.filter((item) => item.id !== id));
+    }, 4200);
+  };
+
+  const dismissToast = (id: number) => {
+    setToasts((current) => current.filter((toast) => toast.id !== id));
+  };
 
   // Smooth navigation handler across the 4 main destinations (Work, Shop, About, Consult)
   const handleNavigate = (destination: string) => {
     setActiveDestination(destination);
+    setIsLoading(true);
     
     let targetId = destination;
     if (destination === 'work') targetId = 'ai-architecture';
@@ -30,9 +47,27 @@ export default function App() {
 
     const element = document.getElementById(targetId);
     if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
+      window.setTimeout(() => {
+        element.scrollIntoView({ behavior: 'smooth' });
+        window.setTimeout(() => setIsLoading(false), 350);
+      }, 120);
+    } else {
+      setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setIsLoading(false);
+      notify({
+        type: 'success',
+        title: 'Website ready',
+        message: 'You can search the site from the top toolbar.',
+      });
+    }, 650);
+
+    return () => window.clearTimeout(timer);
+  }, []);
 
   // Scroll spy to highlight active section in Navbar
   useEffect(() => {
@@ -73,12 +108,14 @@ export default function App() {
       {/* Blueprint Grid Background Overlay */}
       <GridOverlay isVisible={gridActive} />
 
+      <PageLoader isVisible={isLoading} />
+      <ToastViewport toasts={toasts} onDismiss={dismissToast} />
+
       {/* Floating Header & Navigation (Work · Shop · About · Consult) */}
       <Navbar
         activeDestination={activeDestination}
         onNavigate={handleNavigate}
-        gridActive={gridActive}
-        onToggleGrid={() => setGridActive(!gridActive)}
+        onNotify={notify}
       />
 
       {/* Main Experience Stream */}
@@ -100,18 +137,18 @@ export default function App() {
           onNavigateConsult={() => handleNavigate('consult')}
         />
 
-        {/* SECTION 02: ABOUT — LIGHT GALLERY */}
-        <AboutSection onNavigateConsult={() => handleNavigate('consult')} />
-
         {/* SECTION 03: AI × ARCHITECTURE — DIGITAL LAB (DARK) */}
         <AiArchitecture onNavigateConsultation={() => handleNavigate('consult')} />
 
         {/* SECTION 07: WORK WITH AHMED — WARM CONSULTATION SPACE (LIGHT) */}
-        <ConsultationForm />
+        <ConsultationForm onNotify={notify} />
       </main>
 
       {/* Timed Masterclass Alert */}
       <MasterclassSection />
+
+      {/* SECTION 02: ABOUT — LIGHT GALLERY */}
+      <AboutSection onNavigateConsult={() => handleNavigate('consult')} />
 
       {/* FOOTER (MINIMALIST STUDIO) */}
       <Footer onNavigate={handleNavigate} />

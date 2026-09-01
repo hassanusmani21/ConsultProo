@@ -1,31 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  Volume2, 
-  VolumeX, 
-  Grid as GridIcon, 
   ArrowRight,
   Menu, 
   X
 } from 'lucide-react';
 import { soundManager } from '../utils/sound';
+import { SiteSearch } from './SiteSearch';
+import { ToastType } from './ToastViewport';
 
 interface NavbarProps {
-  gridActive?: boolean;
-  onToggleGrid?: () => void;
   activeDestination?: string;
   onNavigate: (destination: string) => void;
+  onNotify: (toast: { type: ToastType; title: string; message?: string }) => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ 
-  gridActive = true, 
-  onToggleGrid, 
   activeDestination = 'home',
-  onNavigate 
+  onNavigate,
+  onNotify
 }) => {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -35,15 +31,6 @@ export const Navbar: React.FC<NavbarProps> = ({
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-
-  const toggleAudio = () => {
-    const nextMuted = !isMuted;
-    setIsMuted(nextMuted);
-    soundManager.setMuted(nextMuted);
-    if (!nextMuted) {
-      soundManager.playClick();
-    }
-  };
 
   const handleNavClick = (dest: string) => {
     soundManager.playClick();
@@ -117,37 +104,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Right Controls & Primary SHOP CTA */}
           <div className="shrink-0 flex items-center gap-2 sm:gap-3">
-            {onToggleGrid && (
-              <button
-                onClick={() => {
-                  soundManager.playClick();
-                  onToggleGrid();
-                }}
-                title={gridActive ? "Disable Blueprint Grid" : "Enable Blueprint Grid"}
-                className={`p-2 rounded-lg border text-xs font-sans transition-all flex items-center gap-1.5 ${
-                  gridActive
-                    ? 'bg-[#bfa37c]/20 border-[#bfa37c]/40 text-[#d6be9c]'
-                    : 'bg-[#181a24] border-white/10 text-[#9a9da8] hover:text-white'
-                }`}
-              >
-                <GridIcon className="w-3.5 h-3.5" />
-                <span className="hidden lg:inline text-[10px] font-sans uppercase tracking-wider">
-                  Grid
-                </span>
-              </button>
-            )}
-
-            <button
-              onClick={toggleAudio}
-              title={isMuted ? "Unmute Audio" : "Mute Audio"}
-              className={`p-2 rounded-lg border transition-all ${
-                isMuted
-                  ? 'bg-[#181a24] border-white/10 text-[#9a9da8]'
-                  : 'bg-[#181a24] border-[#bfa37c]/40 text-[#bfa37c]'
-              }`}
-            >
-              {isMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
-            </button>
+            <SiteSearch onNavigate={handleNavClick} onNotify={onNotify} />
 
             {/* Primary SHOP Button */}
             <button

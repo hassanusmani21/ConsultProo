@@ -19,8 +19,8 @@ export const ebooksList: EbookProduct[] = [
       'Chapter 3: Facade Materials: Concrete, Timber & Glazing',
       'Chapter 4: Interior Staging & Spatial Composition'
     ],
-    price: '$29',
-    currency: 'USD',
+    price: '2499',
+    currency: 'INR',
     purchaseUrl: 'mailto:ar.ahmedusmani@gmail.com?subject=Purchase%20Ebook:%20Midjourney%20for%20Architects',
     pagesCount: '120 Pages',
     format: 'Instant PDF + Notion Prompt Vault Access',
@@ -44,8 +44,8 @@ export const ebooksList: EbookProduct[] = [
       'Phase 3: Texture Baking & Lighting Balancing',
       'Phase 4: Client Presentation Strategy'
     ],
-    price: '$49',
-    currency: 'USD',
+    price: '3999',
+    currency: 'INR',
     purchaseUrl: 'mailto:ar.ahmedusmani@gmail.com?subject=Purchase%20Ebook:%20Complete%20Architecture%20AI%20Workflow',
     pagesCount: '185 Pages',
     format: 'Instant PDF + Video Walkthroughs + Templates',
@@ -69,8 +69,8 @@ export const ebooksList: EbookProduct[] = [
       'Module 3: Material Specifications & Schedules',
       'Module 4: Studio Marketing & Social Copywriting'
     ],
-    price: '$19',
-    currency: 'USD',
+    price: '1599',
+    currency: 'INR',
     purchaseUrl: 'mailto:ar.ahmedusmani@gmail.com?subject=Purchase%20Ebook:%20ChatGPT%20for%20Architects',
     pagesCount: '85 Pages',
     format: 'Instant PDF + Notion GPT Library',
@@ -94,8 +94,8 @@ export const ebooksList: EbookProduct[] = [
       'Section 3: Schedules, Quantities & Sheet Production',
       'Section 4: BIM Collaboration Checklist'
     ],
-    price: '$29',
-    currency: 'USD',
+    price: '2499',
+    currency: 'INR',
     purchaseUrl: 'mailto:ar.ahmedusmani@gmail.com?subject=Purchase%20Ebook:%20Revit%20BIM%20Starter%20Guide',
     pagesCount: '110 Pages',
     format: 'Instant PDF + 5 Sample Revit Families (.rfa)',

@@ -1,12 +1,17 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Layers, ShieldCheck, Box, Database, Sparkles, CheckCircle2, AlertTriangle, FileCode2, Cpu } from 'lucide-react';
-import { bimShowcaseLayers, BimLayerData } from '../data/bimData';
+import { BimLayerData } from '../data/bimData';
+import { useData } from '../data/DataContext';
 import { soundManager } from '../utils/sound';
 
 export const BimExperience: React.FC = () => {
+  const { data } = useData();
+  const bimShowcaseLayers = data.bimLayers.filter((item: BimLayerData & { published?: boolean }) => item.published !== false);
   const [activeLodId, setActiveLodId] = useState<string>('lod-300-coordination');
-  const activeLayer = bimShowcaseLayers.find((l) => l.id === activeLodId) || bimShowcaseLayers[1];
+  const activeLayer = bimShowcaseLayers.find((l: BimLayerData) => l.id === activeLodId) || bimShowcaseLayers[0];
+
+  if (!activeLayer) return null;
 
   const handleSelectLod = (id: string) => {
     soundManager.playClick();

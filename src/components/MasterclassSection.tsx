@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { ArrowRight, Check, Sparkles, Mail, X } from 'lucide-react';
+import { useData } from '../data/DataContext';
 import { soundManager } from '../utils/sound';
 
 export const MasterclassSection: React.FC = () => {
+  const { data } = useData();
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
@@ -70,15 +72,15 @@ export const MasterclassSection: React.FC = () => {
 
               {/* Headline */}
               <h2 id="masterclass-title" className="text-3xl sm:text-5xl font-sans font-extrabold text-white tracking-tight leading-[1.05]">
-                AI ARCHITECTURE MASTERCLASS <br />
+                {data.masterclass.title} <br />
                 <span className="font-serif italic font-normal text-[#d6be9c] tracking-normal inline-block">
-                  COMING SOON.
+                  {data.masterclass.status}.
                 </span>
               </h2>
 
               {/* Description */}
               <p className="text-sm sm:text-base text-[#c4c6cf] font-normal leading-relaxed">
-                A practical, step-by-step masterclass on using generative AI in architectural concept design, visualization and client presentation.
+                {data.masterclass.description}
               </p>
 
               {/* Waitlist Form */}

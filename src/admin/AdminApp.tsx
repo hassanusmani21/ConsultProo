@@ -1,53 +1,50 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './auth/AuthContext';
-import LoginPage from './pages/LoginPage';
 import AdminLayout from './components/AdminLayout';
+import { useAuth } from './auth/AuthContext';
 import Dashboard from './pages/Dashboard';
 import ProfilePage from './pages/ProfilePage';
-import ProjectsPage from './pages/ProjectsPage';
+import CrudPage from './pages/CrudPage';
+import SectionsPage from './pages/SectionsPage';
+import MasterclassPage from './pages/MasterclassPage';
+import LoginPage from './pages/LoginPage';
 
-// Pages placeholders
-const Interiors = () => <div className="text-white text-2xl font-bold">Interiors Management</div>;
-const Ebooks = () => <div className="text-white text-2xl font-bold">Ebooks Management</div>;
-const VillaPlans = () => <div className="text-white text-2xl font-bold">Villa Plans Management</div>;
-const AiPrompts = () => <div className="text-white text-2xl font-bold">AI Prompts Management</div>;
-const Content = () => <div className="text-white text-2xl font-bold">Latest Content Management</div>;
-const Masterclass = () => <div className="text-white text-2xl font-bold">Masterclass Management</div>;
-
-// Protected Route wrapper
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
+function ProtectedAdmin() {
   const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
-    return <div className="min-h-screen bg-[#0e1015] flex items-center justify-center text-[#bfa37c]">Loading secure session...</div>;
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#0e1015] text-sm font-bold uppercase tracking-[0.18em] text-[#bfa37c]">
+        Loading admin...
+      </div>
+    );
   }
 
-  if (!isAuthenticated) {
-    return <Navigate to="/admin/login" replace />;
-  }
+  if (!isAuthenticated) return <Navigate to="/admin/login" replace />;
 
-  return <>{children}</>;
+  return <AdminLayout />;
 }
 
 export default function AdminApp() {
   return (
-    <AuthProvider>
-      <Routes>
-        <Route path="login" element={<LoginPage />} />
-        
-        <Route path="/" element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
-          <Route index element={<Dashboard />} />
-          <Route path="profile" element={<ProfilePage />} />
-          <Route path="projects" element={<ProjectsPage />} />
-          <Route path="interiors" element={<Interiors />} />
-          <Route path="ebooks" element={<Ebooks />} />
-          <Route path="villa-plans" element={<VillaPlans />} />
-          <Route path="ai-prompts" element={<AiPrompts />} />
-          <Route path="content" element={<Content />} />
-          <Route path="masterclass" element={<Masterclass />} />
-        </Route>
-      </Routes>
-    </AuthProvider>
+    <Routes>
+      <Route path="login" element={<LoginPage />} />
+      <Route path="/" element={<ProtectedAdmin />}>
+        <Route index element={<Dashboard />} />
+        <Route path="profile" element={<ProfilePage />} />
+        <Route path="sections" element={<SectionsPage />} />
+        <Route path="projects" element={<CrudPage collection="projects" />} />
+        <Route path="interiors" element={<CrudPage collection="interiors" />} />
+        <Route path="ebooks" element={<CrudPage collection="ebooks" />} />
+        <Route path="villa-plans" element={<CrudPage collection="villaPlans" />} />
+        <Route path="ai-prompts" element={<CrudPage collection="aiPrompts" />} />
+        <Route path="content" element={<CrudPage collection="latestContent" />} />
+        <Route path="learning" element={<CrudPage collection="learningArticles" />} />
+        <Route path="digital-products" element={<CrudPage collection="digitalProducts" />} />
+        <Route path="featured-prompts" element={<CrudPage collection="featuredPrompts" />} />
+        <Route path="bim-layers" element={<CrudPage collection="bimLayers" />} />
+        <Route path="masterclass" element={<MasterclassPage />} />
+      </Route>
+    </Routes>
   );
 }

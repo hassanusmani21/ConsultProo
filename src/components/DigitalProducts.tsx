@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { ArrowUpRight, BookOpen, Layers, Cpu, Sparkles, Download, CheckCircle2, ChevronRight } from 'lucide-react';
-import { digitalProducts } from '../data/productsData';
+import { useData } from '../data/DataContext';
 import { DigitalProduct } from '../types';
 import { ProductModal } from './ProductModal';
 import { soundManager } from '../utils/sound';
@@ -12,8 +12,10 @@ interface DigitalProductsProps {
 }
 
 export const DigitalProducts: React.FC<DigitalProductsProps> = ({ onSetCursorText, onNavigateConsultation }) => {
+  const { data } = useData();
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [selectedProduct, setSelectedProduct] = useState<DigitalProduct | null>(null);
+  const products = data.digitalProducts.filter((item: DigitalProduct & { published?: boolean }) => item.published !== false);
 
   const categories = [
     { id: 'all', label: 'All Resources' },
@@ -25,8 +27,8 @@ export const DigitalProducts: React.FC<DigitalProductsProps> = ({ onSetCursorTex
   ];
 
   const filteredProducts = activeCategory === 'all'
-    ? digitalProducts
-    : digitalProducts.filter((p) => p.category === activeCategory);
+    ? products
+    : products.filter((p: DigitalProduct) => p.category === activeCategory);
 
   const handleOpenProduct = (prod: DigitalProduct) => {
     soundManager.playClick();

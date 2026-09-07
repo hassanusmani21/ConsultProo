@@ -1,11 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { ArrowRight, FileSearch, Search, X } from 'lucide-react';
-import { aiPromptsLibrary, aiVideosList } from '../data/aiPromptsData';
-import { latestContentList } from '../data/latestContentData';
-import { initialMasterclass, initialProfile } from '../data/mockData';
-import { portfolioProjects } from '../data/portfolioData';
-import { digitalProducts } from '../data/productsData';
+import { aiVideosList } from '../data/aiPromptsData';
+import { useData } from '../data/DataContext';
 import { soundManager } from '../utils/sound';
 import { ToastType } from './ToastViewport';
 
@@ -23,79 +20,80 @@ interface SearchItem {
   keywords: string;
 }
 
-const searchItems: SearchItem[] = [
-  {
-    id: 'profile',
-    title: initialProfile.name,
-    label: 'Profile',
-    description: `${initialProfile.title}. ${initialProfile.bio}`,
-    destination: 'about',
-    keywords: `${initialProfile.location} ${initialProfile.email} architecture interior ai about`,
-  },
-  {
-    id: 'consult',
-    title: 'Consultation & Project Inquiry',
-    label: 'Contact',
-    description: 'Book a consultation for architecture, interiors, AI workflows, villa design, or complete execution.',
-    destination: 'consult',
-    keywords: 'book consultation contact project timeline design architecture interior execution meeting',
-  },
-  {
-    id: 'masterclass',
-    title: initialMasterclass.title,
-    label: 'Learning',
-    description: `${initialMasterclass.description} Status: ${initialMasterclass.status}.`,
-    destination: 'shop',
-    keywords: 'course masterclass ai architecture learn training workshop',
-  },
-  ...portfolioProjects.map((project) => ({
-    id: project.id,
-    title: project.title,
-    label: `${project.category} project`,
-    description: `${project.subtitle}. ${project.concept}`,
-    destination: 'work',
-    keywords: `${project.category} ${project.year} ${project.location} ${project.role} ${project.description}`,
-  })),
-  ...digitalProducts.map((product) => ({
-    id: product.id,
-    title: product.title,
-    label: `${product.category} product`,
-    description: `${product.tagline}. ${product.description}`,
-    destination: 'shop',
-    keywords: `${product.category} ${product.badge ?? ''} ${product.specs.format} ${product.specs.software?.join(' ') ?? ''} ${product.contentHighlights.join(' ')}`,
-  })),
-  ...aiPromptsLibrary.map((prompt) => ({
-    id: prompt.id,
-    title: prompt.title,
-    label: `${prompt.category} prompt`,
-    description: `${prompt.previewText} ${prompt.workflowStep ?? ''}`,
-    destination: 'work',
-    keywords: `${prompt.code} ${prompt.category} ${prompt.type} ${prompt.fullPrompt} ${prompt.parameters?.engine ?? ''} ${prompt.parameters?.materials ?? ''}`,
-  })),
-  ...aiVideosList.map((video) => ({
-    id: video.id,
-    title: video.title,
-    label: `${video.category} video`,
-    description: `AI workflow video${video.duration ? `, ${video.duration}` : ''}.`,
-    destination: 'work',
-    keywords: `${video.category} ${video.promptId} video visualization architecture interior ai`,
-  })),
-  ...latestContentList.map((item) => ({
-    id: item.id,
-    title: item.title,
-    label: `${item.platform} ${item.type}`,
-    description: item.summary,
-    destination: item.platform === 'Prompt Vault' ? 'shop' : 'work',
-    keywords: `${item.category} ${item.platform} ${item.date} ${item.readOrWatchTime}`,
-  })),
-];
-
 export const SiteSearch: React.FC<SiteSearchProps> = ({ onNavigate, onNotify }) => {
+  const { data } = useData();
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
   const normalizedQuery = query.trim().toLowerCase();
+
+  const searchItems = useMemo<SearchItem[]>(() => [
+    {
+      id: 'profile',
+      title: data.profile.name,
+      label: 'Profile',
+      description: `${data.profile.title}. ${data.profile.bio}`,
+      destination: 'about',
+      keywords: `${data.profile.location} ${data.profile.email} architecture interior ai about`,
+    },
+    {
+      id: 'consult',
+      title: data.sections.consult?.title || 'Consultation & Project Inquiry',
+      label: 'Contact',
+      description: data.sections.consult?.subtitle || 'Book a consultation for architecture, interiors, AI workflows, villa design, or complete execution.',
+      destination: 'consult',
+      keywords: 'book consultation contact project timeline design architecture interior execution meeting',
+    },
+    {
+      id: 'masterclass',
+      title: data.masterclass.title,
+      label: 'Learning',
+      description: `${data.masterclass.description} Status: ${data.masterclass.status}.`,
+      destination: 'shop',
+      keywords: 'course masterclass ai architecture learn training workshop',
+    },
+    ...data.projects.filter((project: any) => project.published !== false).map((project: any) => ({
+      id: project.id,
+      title: project.title,
+      label: `${project.category} project`,
+      description: `${project.subtitle ?? ''}. ${project.concept ?? project.description ?? ''}`,
+      destination: 'work',
+      keywords: `${project.category} ${project.year} ${project.location} ${project.role ?? ''} ${project.description ?? ''}`,
+    })),
+    ...data.digitalProducts.filter((product: any) => product.published !== false).map((product: any) => ({
+      id: product.id,
+      title: product.title,
+      label: `${product.category} product`,
+      description: `${product.tagline}. ${product.description}`,
+      destination: 'shop',
+      keywords: `${product.category} ${product.badge ?? ''} ${product.specs?.format ?? ''} ${product.specs?.software?.join(' ') ?? ''} ${product.contentHighlights?.join(' ') ?? ''}`,
+    })),
+    ...data.aiPrompts.filter((prompt: any) => prompt.published !== false).map((prompt: any) => ({
+      id: prompt.id,
+      title: prompt.title,
+      label: `${prompt.category} prompt`,
+      description: `${prompt.previewText} ${prompt.workflowStep ?? ''}`,
+      destination: 'work',
+      keywords: `${prompt.code} ${prompt.category} ${prompt.type} ${prompt.fullPrompt} ${prompt.parameters?.engine ?? ''} ${prompt.parameters?.materials ?? ''}`,
+    })),
+    ...aiVideosList.map((video) => ({
+      id: video.id,
+      title: video.title,
+      label: `${video.category} video`,
+      description: `AI workflow video${video.duration ? `, ${video.duration}` : ''}.`,
+      destination: 'work',
+      keywords: `${video.category} ${video.promptId} video visualization architecture interior ai`,
+    })),
+    ...data.latestContent.filter((item: any) => item.published !== false).map((item: any) => ({
+      id: item.id,
+      title: item.title,
+      label: `${item.platform} ${item.type}`,
+      description: item.summary,
+      destination: item.platform === 'Prompt Vault' ? 'shop' : 'work',
+      keywords: `${item.category} ${item.platform} ${item.date} ${item.readOrWatchTime}`,
+    })),
+  ], [data]);
 
   const results = useMemo(() => {
     if (!normalizedQuery) return searchItems.slice(0, 5);
@@ -120,7 +118,7 @@ export const SiteSearch: React.FC<SiteSearchProps> = ({ onNavigate, onNotify }) 
       .sort((a, b) => b.score - a.score)
       .slice(0, 6)
       .map(({ item }) => item);
-  }, [normalizedQuery]);
+  }, [normalizedQuery, searchItems]);
 
   useEffect(() => {
     if (isOpen) {

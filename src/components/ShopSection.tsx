@@ -16,9 +16,7 @@ import {
   Compass,
   Terminal
 } from 'lucide-react';
-import { ebooksList } from '../data/ebooksData';
-import { villaPlans } from '../data/villaPlansData';
-import { aiPromptsLibrary } from '../data/aiPromptsData';
+import { useData } from '../data/DataContext';
 import { EbookProduct, VillaPlan, AiPromptData } from '../types';
 import { soundManager } from '../utils/sound';
 
@@ -28,6 +26,8 @@ interface ShopSectionProps {
 }
 
 export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNavigateConsult }) => {
+  const { data } = useData();
+  const section = data.sections.shop;
   const [activeCategory, setActiveCategory] = useState<'all' | 'ebooks' | 'plans' | 'prompts'>('all');
   const [selectedEbook, setSelectedEbook] = useState<EbookProduct | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<VillaPlan | null>(null);
@@ -35,6 +35,17 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
   const [copiedPromptId, setCopiedPromptId] = useState<string | null>(null);
   const [selectedPlotSize, setSelectedPlotSize] = useState<string>('');
   const [purchaseSuccess, setPurchaseSuccess] = useState<boolean>(false);
+  const ebooksList = data.ebooks.filter((item: EbookProduct & { published?: boolean }) => item.published !== false);
+  const villaPlans = data.villaPlans.filter((item: VillaPlan & { published?: boolean }) => item.published !== false);
+  const aiPromptsLibrary = data.aiPrompts.filter((item: AiPromptData & { published?: boolean }) => item.published !== false);
+
+  const formatPrice = (price: string | number | undefined, currency = 'INR') => {
+    const numericValue = Number(String(price ?? '').replace(/[^0-9.-]/g, ''));
+    if (!Number.isFinite(numericValue)) return price || '';
+    return new Intl.NumberFormat('en-IN', { style: 'currency', currency }).format(numericValue);
+  };
+
+  if (section?.published === false) return null;
 
   const handleOpenEbook = (ebook: EbookProduct) => {
     soundManager.playClick();
@@ -90,80 +101,83 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
           <div className="space-y-3">
             <div className="inline-flex items-center gap-2 text-[11px] font-sans font-bold text-[#9e825d] uppercase tracking-[0.2em] px-3 py-1 rounded-full bg-[#ebe7df] border border-[#bfa37c]/30">
               <Compass className="w-3.5 h-3.5 text-[#9e825d]" />
-              <span>DIGITAL PRODUCTS & READY DRAWINGS</span>
+              <span>{section.eyebrow}</span>
             </div>
             <h2 className="text-3xl sm:text-5xl md:text-6xl font-sans font-extrabold text-[#12141a] tracking-tight leading-[1.0]">
-              STUDIO{' '}
-              <span className="font-serif italic font-normal text-[#9e825d] tracking-normal">
-                SHOP.
-              </span>
+              {section.title}
             </h2>
             <p className="text-sm sm:text-base text-[#4a4d57] font-normal leading-relaxed max-w-xl">
-              Practical guides, structured AI frameworks, and ready-to-build architectural villa drawing sets.
+              {section.subtitle}
             </p>
           </div>
 
           {/* Category Switcher Tabs */}
-          <div className="grid w-full max-w-full grid-cols-4 items-center gap-1 p-1 rounded-xl bg-[#ebe7df] border border-[#12141a]/10 md:w-auto md:flex md:gap-1.5 md:p-1.5">
-            <button
-              onClick={() => {
-                soundManager.playTick(900);
-                setActiveCategory('all');
-              }}
-              className={`min-w-0 px-1.5 py-2 rounded-lg text-[8px] sm:text-xs font-sans uppercase tracking-[0.06em] sm:tracking-[0.12em] transition-all md:shrink-0 md:px-4 ${
-                activeCategory === 'all'
-                  ? 'bg-[#12141a] text-[#ffffff] font-bold shadow-md'
-                  : 'text-[#4a4d57] hover:text-[#12141a]'
-              }`}
-            >
-              <span className="hidden sm:inline">All Products</span>
-              <span className="sm:hidden">All</span>
-            </button>
-            <button
-              onClick={() => {
-                soundManager.playTick(900);
-                setActiveCategory('ebooks');
-              }}
-              className={`min-w-0 px-1.5 py-2 rounded-lg text-[8px] sm:text-xs font-sans uppercase tracking-[0.06em] sm:tracking-[0.12em] transition-all flex items-center justify-center gap-1 md:shrink-0 md:px-4 md:gap-1.5 ${
-                activeCategory === 'ebooks'
-                  ? 'bg-[#12141a] text-[#ffffff] font-bold shadow-md'
-                  : 'text-[#4a4d57] hover:text-[#12141a]'
-              }`}
-            >
-              <BookOpen className="hidden w-3.5 h-3.5 sm:block" />
-              <span className="hidden sm:inline">Ebooks & Guides</span>
-              <span className="sm:hidden">Ebooks</span>
-            </button>
-            <button
-              onClick={() => {
-                soundManager.playTick(900);
-                setActiveCategory('prompts');
-              }}
-              className={`min-w-0 px-1.5 py-2 rounded-lg text-[8px] sm:text-xs font-sans uppercase tracking-[0.06em] sm:tracking-[0.12em] transition-all flex items-center justify-center gap-1 md:shrink-0 md:px-4 md:gap-1.5 ${
-                activeCategory === 'prompts'
-                  ? 'bg-[#12141a] text-[#ffffff] font-bold shadow-md'
-                  : 'text-[#4a4d57] hover:text-[#12141a]'
-              }`}
-            >
-              <Sparkles className="hidden w-3.5 h-3.5 sm:block" />
-              <span className="hidden sm:inline">Prompt Library</span>
-              <span className="sm:hidden">Prompts</span>
-            </button>
-            <button
-              onClick={() => {
-                soundManager.playTick(900);
-                setActiveCategory('plans');
-              }}
-              className={`min-w-0 px-1.5 py-2 rounded-lg text-[8px] sm:text-xs font-sans uppercase tracking-[0.06em] sm:tracking-[0.12em] transition-all flex items-center justify-center gap-1 md:shrink-0 md:px-4 md:gap-1.5 ${
-                activeCategory === 'plans'
-                  ? 'bg-[#12141a] text-[#ffffff] font-bold shadow-md'
-                  : 'text-[#4a4d57] hover:text-[#12141a]'
-              }`}
-            >
-              <Home className="hidden w-3.5 h-3.5 sm:block" />
-              <span className="hidden sm:inline">Ready Villa Plans</span>
-              <span className="sm:hidden">Plans</span>
-            </button>
+          <div className="w-full rounded-2xl border border-[#bfa37c]/35 bg-[#ffffff]/85 p-2.5 shadow-xl shadow-[#bfa37c]/10 backdrop-blur-sm md:w-auto md:min-w-[520px]">
+            <div className="mb-2 flex items-center justify-between px-1 text-[10px] font-sans font-bold uppercase tracking-[0.18em] text-[#9e825d]">
+              <span>Browse by Category</span>
+              <span className="hidden text-[#747783] sm:inline">4 Collections</span>
+            </div>
+            <div className="grid grid-cols-2 items-center gap-2 md:grid-cols-4">
+              <button
+                onClick={() => {
+                  soundManager.playTick(900);
+                  setActiveCategory('all');
+                }}
+                className={`min-h-12 min-w-0 rounded-xl px-3 py-3 text-[11px] font-sans uppercase tracking-[0.08em] transition-all sm:text-xs md:min-h-10 md:px-4 ${
+                  activeCategory === 'all'
+                    ? 'bg-[#12141a] text-[#ffffff] font-bold shadow-lg shadow-[#12141a]/20 ring-2 ring-[#bfa37c]/30'
+                    : 'bg-[#f5f1e9] text-[#4a4d57] hover:bg-[#eee8dc] hover:text-[#12141a]'
+                }`}
+              >
+                <span className="hidden sm:inline">All Products</span>
+                <span className="sm:hidden">All</span>
+              </button>
+              <button
+                onClick={() => {
+                  soundManager.playTick(900);
+                  setActiveCategory('ebooks');
+                }}
+                className={`flex min-h-12 min-w-0 items-center justify-center gap-1.5 rounded-xl px-3 py-3 text-[11px] font-sans uppercase tracking-[0.08em] transition-all sm:text-xs md:min-h-10 md:px-4 ${
+                  activeCategory === 'ebooks'
+                    ? 'bg-[#12141a] text-[#ffffff] font-bold shadow-lg shadow-[#12141a]/20 ring-2 ring-[#bfa37c]/30'
+                    : 'bg-[#f5f1e9] text-[#4a4d57] hover:bg-[#eee8dc] hover:text-[#12141a]'
+                }`}
+              >
+                <BookOpen className="h-3.5 w-3.5 shrink-0" />
+                <span className="hidden sm:inline">Ebooks & Guides</span>
+                <span className="sm:hidden">Ebooks</span>
+              </button>
+              <button
+                onClick={() => {
+                  soundManager.playTick(900);
+                  setActiveCategory('prompts');
+                }}
+                className={`flex min-h-12 min-w-0 items-center justify-center gap-1.5 rounded-xl px-3 py-3 text-[11px] font-sans uppercase tracking-[0.08em] transition-all sm:text-xs md:min-h-10 md:px-4 ${
+                  activeCategory === 'prompts'
+                    ? 'bg-[#12141a] text-[#ffffff] font-bold shadow-lg shadow-[#12141a]/20 ring-2 ring-[#bfa37c]/30'
+                    : 'bg-[#f5f1e9] text-[#4a4d57] hover:bg-[#eee8dc] hover:text-[#12141a]'
+                }`}
+              >
+                <Sparkles className="h-3.5 w-3.5 shrink-0" />
+                <span className="hidden sm:inline">Prompt Library</span>
+                <span className="sm:hidden">Prompts</span>
+              </button>
+              <button
+                onClick={() => {
+                  soundManager.playTick(900);
+                  setActiveCategory('plans');
+                }}
+                className={`flex min-h-12 min-w-0 items-center justify-center gap-1.5 rounded-xl px-3 py-3 text-[11px] font-sans uppercase tracking-[0.08em] transition-all sm:text-xs md:min-h-10 md:px-4 ${
+                  activeCategory === 'plans'
+                    ? 'bg-[#12141a] text-[#ffffff] font-bold shadow-lg shadow-[#12141a]/20 ring-2 ring-[#bfa37c]/30'
+                    : 'bg-[#f5f1e9] text-[#4a4d57] hover:bg-[#eee8dc] hover:text-[#12141a]'
+                }`}
+              >
+                <Home className="h-3.5 w-3.5 shrink-0" />
+                <span className="hidden sm:inline">Ready Villa Plans</span>
+                <span className="sm:hidden">Plans</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -178,18 +192,18 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
               <span className="text-[11px] font-sans text-[#747783] font-medium">Instant PDF + Template Downloads</span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-5">
               {ebooksList.map((ebook) => (
                 <div
                   key={ebook.id}
                   onClick={() => handleOpenEbook(ebook)}
                   onMouseEnter={() => onSetCursorText?.('VIEW')}
                   onMouseLeave={() => onSetCursorText?.(undefined)}
-                  className="group rounded-2xl bg-[#ffffff] border border-[#12141a]/10 hover:border-[#bfa37c] p-5 flex flex-col justify-between transition-all duration-300 cursor-pointer shadow-sm hover:shadow-xl hover:-translate-y-0.5"
+                  className="group rounded-xl bg-[#ffffff] border border-[#12141a]/10 hover:border-[#bfa37c] p-3.5 sm:p-4 flex flex-col justify-between transition-all duration-300 cursor-pointer shadow-sm hover:shadow-lg hover:-translate-y-0.5"
                 >
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     {/* Book Cover Presentation Board */}
-                    <div className="relative aspect-[3/4] rounded-xl overflow-hidden bg-[#ebe7df] border border-[#12141a]/10">
+                    <div className="relative aspect-[4/3] sm:aspect-[16/11] rounded-lg overflow-hidden bg-[#ebe7df] border border-[#12141a]/10">
                       <img
                         src={ebook.coverImage}
                         alt={ebook.title}
@@ -199,13 +213,13 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
                       <div className="absolute inset-0 bg-gradient-to-t from-[#12141a]/80 via-transparent to-transparent opacity-75" />
                       
                       {ebook.badge && (
-                        <div className="absolute top-3 left-3 px-2.5 py-0.5 rounded bg-[#ffffff]/95 border border-[#12141a]/10 text-[10px] font-sans font-bold text-[#9e825d] uppercase tracking-wider shadow-sm">
+                        <div className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded bg-[#ffffff]/95 border border-[#12141a]/10 text-[9px] font-sans font-bold text-[#9e825d] uppercase tracking-wider shadow-sm">
                           {ebook.badge}
                         </div>
                       )}
 
-                      <div className="absolute bottom-3 left-3 right-3">
-                        <div className="text-[10px] font-sans font-bold text-[#f5f4ef] uppercase tracking-wider">
+                      <div className="absolute bottom-2.5 left-2.5 right-2.5">
+                        <div className="text-[9px] font-sans font-bold text-[#f5f4ef] uppercase tracking-wider">
                           {ebook.pagesCount}
                         </div>
                       </div>
@@ -213,29 +227,29 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
 
                     {/* Title & Short Description */}
                     <div className="space-y-1.5">
-                      <h3 className="text-base font-sans font-bold text-[#12141a] group-hover:text-[#9e825d] transition-colors leading-snug">
+                      <h3 className="text-sm sm:text-[15px] font-sans font-bold text-[#12141a] group-hover:text-[#9e825d] transition-colors leading-snug">
                         {ebook.title}
                       </h3>
-                      <p className="text-xs font-sans text-[#4a4d57] leading-relaxed line-clamp-2">
+                      <p className="text-[11px] sm:text-xs font-sans text-[#4a4d57] leading-relaxed line-clamp-2">
                         {ebook.description}
                       </p>
                     </div>
                   </div>
 
                   {/* Price & Action Button */}
-                  <div className="pt-4 mt-4 border-t border-[#12141a]/10 flex items-center justify-between">
-                    <span className="text-lg font-sans font-extrabold text-[#12141a]">
-                      {ebook.price}
+                  <div className="pt-3 mt-3 border-t border-[#12141a]/10 flex items-center justify-between gap-3">
+                    <span className="text-base font-sans font-extrabold text-[#12141a]">
+                      {formatPrice(ebook.price, ebook.currency)}
                     </span>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         handleOpenEbook(ebook);
                       }}
-                      className="px-3 py-1.5 rounded-lg bg-[#f2eee6] group-hover:bg-[#12141a] text-[#12141a] group-hover:text-[#ffffff] text-[11px] sm:text-xs font-sans font-bold uppercase tracking-wider transition-all flex items-center gap-1"
+                      className="px-3 py-1.5 rounded-lg bg-[#f2eee6] group-hover:bg-[#12141a] text-[#12141a] group-hover:text-[#ffffff] text-[10px] font-sans font-bold uppercase tracking-wider transition-all flex items-center gap-1"
                     >
                       <span>VIEW DETAILS</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
+                      <ArrowRight className="w-3 h-3" />
                     </button>
                   </div>
                 </div>
@@ -424,7 +438,7 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
                     <div>
                       <span className="text-[11px] font-sans text-[#747783] block">Full Drawing Set</span>
                       <span className="text-lg font-sans font-extrabold text-[#12141a]">
-                        {plan.price}
+                        {formatPrice(plan.price, plan.currency)}
                       </span>
                     </div>
                     <button
@@ -525,13 +539,24 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
               <div className="pt-4 border-t border-[#12141a]/10 flex items-center justify-between">
                 <div>
                   <span className="text-[10px] font-sans text-[#747783] uppercase tracking-wider block">One-time Investment</span>
-                  <span className="text-2xl font-sans font-extrabold text-[#12141a]">{selectedEbook.price}</span>
+                  <span className="text-2xl font-sans font-extrabold text-[#12141a]">{formatPrice(selectedEbook.price, selectedEbook.currency)}</span>
                 </div>
 
-                <button
-                  onClick={() => handleSimulatePurchase(selectedEbook.title)}
-                  className="px-6 py-3 rounded-xl bg-[#12141a] text-[#ffffff] font-sans font-bold text-xs uppercase tracking-[0.14em] hover:bg-[#bfa37c] hover:text-[#12141a] active:scale-95 transition-all flex items-center gap-2 shadow-xl"
-                >
+                <div className="flex flex-wrap justify-end gap-3">
+                  {selectedEbook.pdfUrl && (
+                    <a
+                      href={selectedEbook.pdfUrl}
+                      download
+                      className="flex items-center gap-2 rounded-xl border border-[#12141a]/15 bg-[#f2eee6] px-5 py-3 text-xs font-bold uppercase tracking-[0.14em] text-[#12141a] transition-all hover:bg-[#ebe7df]"
+                    >
+                      <Download className="h-4 w-4" />
+                      <span>Download PDF</span>
+                    </a>
+                  )}
+                  <button
+                    onClick={() => handleSimulatePurchase(selectedEbook.title)}
+                    className="flex items-center gap-2 rounded-xl bg-[#12141a] px-6 py-3 text-xs font-sans font-bold uppercase tracking-[0.14em] text-[#ffffff] shadow-xl transition-all hover:bg-[#bfa37c] hover:text-[#12141a] active:scale-95"
+                  >
                   {purchaseSuccess ? (
                     <>
                       <Check className="w-4 h-4 text-emerald-400" />
@@ -543,7 +568,8 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
                       <span>BUY NOW · INSTANT DOWNLOAD</span>
                     </>
                   )}
-                </button>
+                  </button>
+                </div>
               </div>
             </motion.div>
           </div>
@@ -626,7 +652,7 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
                     {selectedPrompt.type === 'FREE' ? 'Free Prompt' : 'Premium Prompt Matrix'}
                   </span>
                   <span className="text-2xl font-sans font-extrabold text-[#12141a]">
-                    {selectedPrompt.type === 'FREE' ? '$0' : selectedPrompt.price || '$29'}
+                    {selectedPrompt.type === 'FREE' ? formatPrice(0, selectedPrompt.currency) : formatPrice(selectedPrompt.price || '29', selectedPrompt.currency)}
                   </span>
                 </div>
 
@@ -780,7 +806,7 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
               <div className="pt-4 border-t border-[#12141a]/10 flex items-center justify-between">
                 <div>
                   <span className="text-[10px] font-sans text-[#747783] uppercase tracking-wider block">Full Architecture Package</span>
-                  <span className="text-2xl font-sans font-extrabold text-[#12141a]">{selectedPlan.price}</span>
+                  <span className="text-2xl font-sans font-extrabold text-[#12141a]">{formatPrice(selectedPlan.price, selectedPlan.currency)}</span>
                 </div>
 
                 <button

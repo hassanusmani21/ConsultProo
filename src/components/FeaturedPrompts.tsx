@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Sparkles, ArrowRight, Lock, Copy, Check, Terminal } from 'lucide-react';
-import { featuredPromptsList, FeaturedPromptCard } from '../data/featuredPromptsData';
+import { FeaturedPromptCard } from '../data/featuredPromptsData';
+import { useData } from '../data/DataContext';
 import { soundManager } from '../utils/sound';
 
 interface FeaturedPromptsProps {
@@ -13,7 +14,9 @@ export const FeaturedPrompts: React.FC<FeaturedPromptsProps> = ({
   onExploreAllPrompts,
   onSelectPrompt
 }) => {
+  const { data } = useData();
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const featuredPromptsList = data.featuredPrompts.filter((item: FeaturedPromptCard & { published?: boolean }) => item.published !== false);
 
   const handleCopy = (e: React.MouseEvent, prompt: FeaturedPromptCard) => {
     e.stopPropagation();

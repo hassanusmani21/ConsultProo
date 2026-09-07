@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Sparkles, ArrowRight, BookOpen, Download, Check, Video, ArrowUpRight } from 'lucide-react';
-import { digitalProducts } from '../data/productsData';
+import { useData } from '../data/DataContext';
 import { ProductModal } from './ProductModal';
 import { DigitalProduct } from '../types';
 import { soundManager } from '../utils/sound';
@@ -15,7 +15,9 @@ export const LearnSection: React.FC<LearnSectionProps> = ({
   onNavigateLearningHub,
   onNavigateConsultation 
 }) => {
+  const { data } = useData();
   const [selectedProduct, setSelectedProduct] = useState<DigitalProduct | null>(null);
+  const digitalProducts = data.digitalProducts.filter((item: DigitalProduct & { published?: boolean }) => item.published !== false);
 
   // 1 Featured Masterclass + 2 Digital Products
   const masterclass = digitalProducts.find(p => p.id === 'ai-architecture-masterclass') || digitalProducts[0];
@@ -26,6 +28,8 @@ export const LearnSection: React.FC<LearnSectionProps> = ({
     soundManager.playClick();
     setSelectedProduct(prod);
   };
+
+  if (!masterclass || !promptPack || !parametricSystem) return null;
 
   return (
     <section id="learn" className="py-20 sm:py-28 px-4 sm:px-6 lg:px-8 bg-[#090a0f] border-t border-white/10 relative">

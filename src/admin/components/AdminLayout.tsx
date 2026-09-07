@@ -13,7 +13,11 @@ import {
   GraduationCap, 
   LogOut,
   Menu,
-  X
+  X,
+  LayoutPanelTop,
+  Package,
+  Star,
+  Layers
 } from 'lucide-react';
 
 export default function AdminLayout() {
@@ -30,6 +34,11 @@ export default function AdminLayout() {
     { label: 'Villa Plans', path: '/admin/villa-plans', icon: Home },
     { label: 'AI Prompts', path: '/admin/ai-prompts', icon: Wand2 },
     { label: 'Latest Content', path: '/admin/content', icon: Video },
+    { label: 'Learning', path: '/admin/learning', icon: GraduationCap },
+    { label: 'Digital Products', path: '/admin/digital-products', icon: Package },
+    { label: 'Featured Prompts', path: '/admin/featured-prompts', icon: Star },
+    { label: 'BIM Layers', path: '/admin/bim-layers', icon: Layers },
+    { label: 'Sections', path: '/admin/sections', icon: LayoutPanelTop },
     { label: 'Masterclass', path: '/admin/masterclass', icon: GraduationCap },
   ];
 

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { BookOpen, Clock, ArrowUpRight, ChevronRight, Compass } from 'lucide-react';
-import { learningHubArticles } from '../data/learningHubData';
+import { useData } from '../data/DataContext';
 import { Article } from '../types';
 import { ArticleModal } from './ArticleModal';
 import { soundManager } from '../utils/sound';
@@ -11,7 +11,9 @@ interface LearningHubProps {
 }
 
 export const LearningHub: React.FC<LearningHubProps> = ({ onSetCursorText }) => {
+  const { data } = useData();
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
+  const learningHubArticles = data.learningArticles.filter((item: Article & { published?: boolean }) => item.published !== false);
 
   const handleOpenArticle = (art: Article) => {
     soundManager.playClick();

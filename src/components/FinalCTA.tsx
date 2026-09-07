@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { ArrowRight, ArrowUpRight, Mail, MessageSquare, Sparkles } from 'lucide-react';
+import { useData } from '../data/DataContext';
 import { soundManager } from '../utils/sound';
 
 interface FinalCTAProps {
@@ -9,6 +10,11 @@ interface FinalCTAProps {
 }
 
 export const FinalCTA: React.FC<FinalCTAProps> = ({ onNavigate, onSetCursorText }) => {
+  const { data } = useData();
+  const section = data.sections.consult;
+
+  if (section?.published === false) return null;
+
   return (
     <section className="relative py-28 sm:py-36 px-4 sm:px-6 lg:px-8 bg-[#0c0d12] border-t border-white/10 overflow-hidden">
       {/* Background radial highlight */}
@@ -24,18 +30,18 @@ export const FinalCTA: React.FC<FinalCTAProps> = ({ onNavigate, onSetCursorText 
         >
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#13151c] border border-[#c5a880]/30 text-xs font-mono text-[#c5a880] uppercase tracking-widest">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>START A PROJECT OR WORKFLOW AUDIT</span>
+            <span>{section.eyebrow}</span>
           </div>
 
           <h2 className="text-4xl sm:text-6xl md:text-7xl font-display font-extrabold text-white tracking-tight leading-[1.0]">
-            LET&apos;S DESIGN <br />
+            {section.title} <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#c5a880] via-[#e8e9ed] to-white">
               WHAT&apos;S NEXT.
             </span>
           </h2>
 
           <p className="text-base sm:text-xl text-[#d4d4ce] max-w-2xl mx-auto font-light leading-relaxed">
-            Architecture, BIM, AI, visualization or digital learning — let&apos;s build something meaningful and technically extraordinary together.
+            {section.subtitle}
           </p>
 
           <div className="pt-6 flex flex-wrap items-center justify-center gap-4">

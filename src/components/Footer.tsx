@@ -1,5 +1,6 @@
 import React from 'react';
 import { ArrowUpRight, Mail } from 'lucide-react';
+import { useData } from '../data/DataContext';
 import { soundManager } from '../utils/sound';
 
 interface FooterProps {
@@ -7,17 +8,23 @@ interface FooterProps {
 }
 
 export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
+  const { data } = useData();
+  const section = data.sections.footer;
+  const profile = data.profile;
+
   const handleNav = (sectionId: string) => {
     soundManager.playClick();
     onNavigate(sectionId);
   };
 
   const socials = [
-    { label: 'YouTube', url: 'https://youtube.com/@ArAhmedUsmani' },
-    { label: 'Instagram', url: 'https://instagram.com/ar.ahmedusmani' },
-    { label: 'LinkedIn', url: 'https://linkedin.com/in/ahmed-usmani' },
+    { label: 'YouTube', url: profile.youtube },
+    { label: 'Instagram', url: profile.instagram },
+    { label: 'LinkedIn', url: profile.linkedin },
     { label: 'X (Twitter)', url: 'https://x.com/ahmedusmani_arch' }
-  ];
+  ].filter((item) => item.url);
+
+  if (section?.published === false) return null;
 
   return (
     <footer className="bg-[#0e1015] border-t border-white/10 text-[#9a9da8] font-sans text-xs pt-16 pb-12 px-4 sm:px-6 lg:px-8">
@@ -31,10 +38,10 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               </div>
               <div>
                 <span className="font-sans font-bold text-lg text-white tracking-tight">
-                  AR. AHMED USMANI
+                  {section.title}
                 </span>
                 <div className="text-[11px] text-[#bfa37c] tracking-wider uppercase font-semibold">
-                  Architect · Interior · AI
+                  {section.subtitle}
                 </div>
               </div>
             </div>
@@ -79,7 +86,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
         {/* Bottom Metadata Strip */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] font-sans text-[#9a9da8]">
           <div>
-            Copyright © 2026 Ar. Ahmed Usmani. All rights reserved.
+            {section.copyright}
           </div>
           <div className="flex items-center gap-3 text-[#9a9da8] text-[10px] uppercase tracking-wider">
             <span>COA INDIA LICENSED</span>
@@ -93,4 +100,3 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
     </footer>
   );
 };
-

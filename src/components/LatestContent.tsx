@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Play, ArrowRight, Video, Copy, Check, X, Sparkles } from 'lucide-react';
-import { latestContentList, LatestContentItem } from '../data/latestContentData';
+import { LatestContentItem } from '../data/latestContentData';
+import { useData } from '../data/DataContext';
 import { soundManager } from '../utils/sound';
 
 interface LatestContentProps {
@@ -9,8 +10,10 @@ interface LatestContentProps {
 }
 
 export const LatestContent: React.FC<LatestContentProps> = ({ onSetCursorText }) => {
+  const { data } = useData();
   const [selectedItem, setSelectedItem] = useState<LatestContentItem | null>(null);
   const [copiedPrompt, setCopiedPrompt] = useState<boolean>(false);
+  const latestContentList = data.latestContent.filter((item: LatestContentItem & { published?: boolean }) => item.published !== false);
 
   const handleCopyPrompt = () => {
     navigator.clipboard.writeText('/imagine prompt: architectural photography of a raw brutalist concrete and warm cedar villa nestled in dunes, expansive glazing, minimalist reflecting pool, overcast soft northern light, architectural digest --ar 16:9 --v 6.1 --style raw');

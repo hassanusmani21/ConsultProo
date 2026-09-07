@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { Award, Layers, Cpu, Compass, CheckCircle2, Check, ArrowRight, ShieldCheck } from 'lucide-react';
+import { useData } from '../data/DataContext';
 import { soundManager } from '../utils/sound';
 import portraitImg from '../assets/images/regenerated_image_1787571034459.jpg';
 
@@ -9,6 +10,12 @@ interface AboutSectionProps {
 }
 
 export const AboutSection: React.FC<AboutSectionProps> = ({ onNavigateConsult }) => {
+  const { data } = useData();
+  const section = data.sections.about;
+  const profile = data.profile;
+
+  if (section?.published === false) return null;
+
   return (
     <section 
       id="about" 
@@ -23,16 +30,16 @@ export const AboutSection: React.FC<AboutSectionProps> = ({ onNavigateConsult })
         <div className="space-y-3">
           <div className="inline-flex items-center gap-2 text-[11px] font-sans font-bold text-[#9e825d] uppercase tracking-[0.2em] px-3 py-1 rounded-full bg-[#f2eee6] border border-[#bfa37c]/30">
             <Compass className="w-3.5 h-3.5 text-[#9e825d]" />
-            <span>PRACTICE & PHILOSOPHY</span>
+            <span>{section.eyebrow}</span>
           </div>
           <h2 className="text-3xl sm:text-5xl md:text-6xl font-sans font-extrabold text-[#12141a] tracking-tight leading-[1.0]">
             {/* ABOUT{' '} */}
             <span className="font-serif italic font-normal text-[#9e825d] tracking-normal">
-              AHMED USMANI.
+              {section.title}
             </span>
           </h2>
           <p className="text-base sm:text-lg text-[#4a4d57] font-serif italic max-w-xl">
-            "Bridging the precision of building engineering with the generative possibilities of artificial intelligence."
+            "{section.subtitle}"
           </p>
         </div>
 
@@ -42,8 +49,8 @@ export const AboutSection: React.FC<AboutSectionProps> = ({ onNavigateConsult })
             <div className="relative rounded-2xl overflow-hidden bg-[#ffffff] border border-[#12141a]/10 p-2.5 shadow-xl">
               <div className="relative aspect-[4/5] rounded-xl overflow-hidden bg-[#f2eee6]">
                 <img
-                  src={portraitImg}
-                  alt="Ar. Ahmed Usmani"
+                  src={profile.photoUrl || portraitImg}
+                  alt={profile.name}
                   className="w-full h-full object-cover filter contrast-105 hover:scale-102 transition-all duration-700"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#12141a]/80 via-transparent to-transparent opacity-90" />
@@ -51,7 +58,7 @@ export const AboutSection: React.FC<AboutSectionProps> = ({ onNavigateConsult })
                 {/* Floating Architectural Badge on Portrait */}
                 <div className="absolute bottom-4 left-4 right-4 p-3.5 rounded-xl bg-[#ffffff]/95 border border-[#12141a]/10 backdrop-blur-md shadow-lg text-[#12141a]">
                   <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between text-xs font-sans">
-                    <span className="text-[#12141a] font-bold tracking-wide">AR. AHMED USMANI</span>
+                    <span className="text-[#12141a] font-bold tracking-wide">{profile.name}</span>
                     <span className="text-[#9e825d] font-bold text-[11px] flex items-center gap-1">
                       <ShieldCheck className="w-3.5 h-3.5" />
                       COA LICENSED
@@ -68,7 +75,7 @@ export const AboutSection: React.FC<AboutSectionProps> = ({ onNavigateConsult })
           {/* Right Column: Sharp Bio & Highlights */}
           <div className="lg:col-span-7 space-y-7">
             <p className="text-base sm:text-lg text-[#12141a] font-normal leading-relaxed">
-              Ar. Ahmed Usmani is an Architect, Interior Designer, and Digital Educator working across Architecture, AI, and Complete Interior Execution.
+              {profile.bio}
             </p>
 
             {/* Key Highlights Grid */}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { ArrowRight, ArrowDown } from 'lucide-react';
+import { useData } from '../data/DataContext';
 import { soundManager } from '../utils/sound';
 
 interface HeroProps {
@@ -16,7 +17,11 @@ export const Hero: React.FC<HeroProps> = ({
   onNavigateExplore,
   onSetCursorText 
 }) => {
+  const { data } = useData();
+  const section = data.sections.hero;
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+
+  if (section?.published === false) return null;
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -61,9 +66,9 @@ export const Hero: React.FC<HeroProps> = ({
       <div className="max-w-7xl mx-auto w-full pt-1 sm:pt-2">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 py-2 border-b border-white/10 text-[8px] sm:text-xs font-sans font-medium text-[#9a9da8] tracking-[0.12em] sm:tracking-[0.2em] uppercase">
           <div className="flex min-w-0 flex-wrap items-center gap-1.5 sm:gap-3">
-            <span className="text-white font-bold tracking-[0.12em] sm:tracking-[0.18em]">AR. AHMED USMANI</span>
+            <span className="text-white font-bold tracking-[0.12em] sm:tracking-[0.18em]">{section.title}</span>
             <span className="text-white/20">|</span>
-            <span className="text-[#bfa37c] font-semibold">ARCHITECT · INTERIOR · AI</span>
+            <span className="text-[#bfa37c] font-semibold">{section.eyebrow}</span>
           </div>
 
           <div className="hidden sm:flex items-center gap-3 text-[#9a9da8] text-[10px]">
@@ -104,7 +109,7 @@ export const Hero: React.FC<HeroProps> = ({
               <div className="absolute left-0 top-0 hidden h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-[#bfa37c] sm:block lg:left-auto lg:right-0 lg:-translate-y-1/2 lg:translate-x-0" />
 
               <p className="max-w-[27rem] text-[11px] min-[380px]:text-xs sm:text-base text-[#d8dbe3] font-normal leading-[1.65] sm:leading-[1.75]">
-                Architecture, bespoke interiors, AI generative workflows, and practical digital design resources for the contemporary practice.
+                {section.subtitle}
               </p>
 
               {/* Action Buttons: EXPLORE WORK → and SHOP RESOURCES → */}
@@ -121,7 +126,7 @@ export const Hero: React.FC<HeroProps> = ({
                   onMouseLeave={() => onSetCursorText?.(undefined)}
                   className="min-h-11 sm:min-h-15 w-full px-4 sm:px-6 py-2.5 sm:py-3.5 rounded-lg bg-[#bfa37c] text-[#0e1015] font-sans font-bold text-[9px] sm:text-xs uppercase tracking-[0.1em] sm:tracking-[0.14em] hover:bg-[#d6be9c] active:scale-95 transition-all flex items-center justify-center gap-2.5 sm:gap-3 shadow-xl shadow-[#bfa37c]/20"
                 >
-                  <span className="leading-tight text-center">EXPLORE WORK</span>
+                  <span className="leading-tight text-center">{section.primaryButton}</span>
                   <ArrowRight className="w-4 h-4 shrink-0" />
                 </button>
 
@@ -137,7 +142,7 @@ export const Hero: React.FC<HeroProps> = ({
                   onMouseLeave={() => onSetCursorText?.(undefined)}
                   className="min-h-11 sm:min-h-15 w-full px-4 sm:px-6 py-2.5 sm:py-3.5 rounded-lg bg-[#181a24]/80 border border-white/15 text-white font-sans font-semibold text-[9px] sm:text-xs uppercase tracking-[0.1em] sm:tracking-[0.14em] hover:bg-[#202330] hover:border-[#bfa37c]/50 transition-all flex items-center justify-center gap-2.5 sm:gap-3"
                 >
-                  <span className="leading-tight text-center">SHOP RESOURCES</span>
+                  <span className="leading-tight text-center">{section.secondaryButton}</span>
                   <ArrowRight className="w-4 h-4 shrink-0 text-[#9a9da8]" />
                 </button>
               </div>

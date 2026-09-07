@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useData } from '../../data/DataContext';
 import { Save, UploadCloud } from 'lucide-react';
 
@@ -6,16 +6,31 @@ export default function ProfilePage() {
   const { data, updateData } = useData();
   const [formData, setFormData] = useState(data.profile);
   const [isSaving, setIsSaving] = useState(false);
+  const [notice, setNotice] = useState('');
+
+  useEffect(() => {
+    setFormData(data.profile);
+  }, [data.profile]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
-    // Simulate API call
-    setTimeout(() => {
-      updateData('profile', formData);
-      setIsSaving(false);
-      alert('Profile updated successfully');
-    }, 500);
+    updateData('profile', formData);
+    setIsSaving(false);
+    setNotice('Profile updated.');
+  };
+
+  const handlePhotoUpload = (file: File | undefined) => {
+    if (!file) return;
+    if (file.size > 3 * 1024 * 1024) {
+      setNotice('The profile image must be smaller than 3 MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => setFormData((current: any) => ({ ...current, photoUrl: String(reader.result) }));
+    reader.onerror = () => setNotice('The profile image could not be read.');
+    reader.readAsDataURL(file);
   };
 
   return (
@@ -32,6 +47,8 @@ export default function ProfilePage() {
         </button>
       </div>
 
+      {notice && <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-300">{notice}</div>}
+
       <div className="bg-[#14161f] border border-white/10 rounded-2xl p-6">
         <form className="space-y-6" onSubmit={handleSubmit}>
           
@@ -47,12 +64,12 @@ export default function ProfilePage() {
                 )}
               </div>
               <div className="flex-1">
-                <button type="button" className="flex items-center gap-2 px-4 py-2 bg-[#181a24] border border-white/10 text-white rounded-lg text-sm hover:border-[#bfa37c] transition-colors">
+                <label className="flex w-fit cursor-pointer items-center gap-2 rounded-lg border border-white/10 bg-[#181a24] px-4 py-2 text-sm text-white transition-colors hover:border-[#bfa37c]">
                   <UploadCloud className="w-4 h-4" />
                   <span>Upload New Photo</span>
-                </button>
+                  <input type="file" accept="image/*" onChange={(event) => handlePhotoUpload(event.target.files?.[0])} className="sr-only" />
+                </label>
                 <p className="text-xs text-[#9a9da8] mt-2">Recommended: 400x400px JPG or PNG</p>
-                {/* Note: File upload logic will be connected to real storage later */}
               </div>
             </div>
           </div>

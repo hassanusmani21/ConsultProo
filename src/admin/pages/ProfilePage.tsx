@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useData } from '../../data/DataContext';
 import { Save, UploadCloud } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 
 export default function ProfilePage() {
   const { data, updateData } = useData();
@@ -12,18 +13,40 @@ export default function ProfilePage() {
     setFormData(data.profile);
   }, [data.profile]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
-    updateData('profile', formData);
-    setIsSaving(false);
-    setNotice('Profile updated.');
+    try {
+      await updateData('profile', formData);
+      setNotice('Profile updated in Supabase.');
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Profile could not be saved.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handlePhotoUpload = (file: File | undefined) => {
+  const handlePhotoUpload = async (file: File | undefined) => {
     if (!file) return;
     if (file.size > 3 * 1024 * 1024) {
       setNotice('The profile image must be smaller than 3 MB.');
+      return;
+    }
+
+    if (supabase) {
+      const path = `cms/profile/${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '-')}`;
+      const { error } = await supabase.storage.from('cms-assets').upload(path, file, {
+        upsert: false,
+        contentType: file.type,
+        cacheControl: '3600',
+      });
+      if (error) {
+        setNotice(`Profile image upload failed: ${error.message}`);
+        return;
+      }
+      const url = supabase.storage.from('cms-assets').getPublicUrl(path).data.publicUrl;
+      setFormData((current: any) => ({ ...current, photoUrl: url }));
+      setNotice('Profile image uploaded. Save the profile to publish it.');
       return;
     }
 

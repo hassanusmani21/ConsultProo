@@ -1,7 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-
-// Abstracted Authentication Layer
-// Ready to be connected to Firebase Auth, Supabase Auth, or a custom JWT backend.
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { supabase } from '../../lib/supabase';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -13,54 +11,98 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const ensureAdmin = async (userId: string) => {
+  if (!supabase) throw new Error('Supabase is not configured for this deployment.');
+
+  const { data, error } = await supabase
+    .from('admin_users')
+    .select('user_id')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error) throw new Error('Admin access could not be verified.');
+  if (!data) throw new Error('This account is not approved for admin access.');
+};
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<any | null>(null);
 
   useEffect(() => {
-    // Simulate checking for an existing session (e.g., verifying JWT token from local storage)
-    const checkSession = async () => {
-      setIsLoading(true);
-      try {
-        const token = localStorage.getItem('admin_token');
-        if (token) {
-          // TODO: Validate token with backend
-          setIsAuthenticated(true);
-          setUser({ email: 'admin@example.com' }); // Mock user
-        }
-      } catch (error) {
-        console.error('Session validation failed', error);
-      } finally {
+    if (!supabase) {
+      setIsLoading(false);
+      return;
+    }
+
+    let mounted = true;
+    const loadSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!mounted) return;
+
+      if (!session?.user) {
+        setIsAuthenticated(false);
+        setUser(null);
         setIsLoading(false);
+        return;
+      }
+
+      try {
+        await ensureAdmin(session.user.id);
+        if (mounted) {
+          setUser(session.user);
+          setIsAuthenticated(true);
+        }
+      } catch {
+        await supabase.auth.signOut();
+        if (mounted) {
+          setUser(null);
+          setIsAuthenticated(false);
+        }
+      } finally {
+        if (mounted) setIsLoading(false);
       }
     };
 
-    checkSession();
+    void loadSession();
+
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' || !session?.user) {
+        setUser(null);
+        setIsAuthenticated(false);
+      }
+    });
+
+    return () => {
+      mounted = false;
+      listener.subscription.unsubscribe();
+    };
   }, []);
 
   const login = async (email: string, password: string) => {
-    // TODO: Connect to real backend API (e.g. POST /api/auth/login or signInWithEmailAndPassword)
-    // For now, this is a simulated UI placeholder so the user can access the dashboard.
-    // In a real application, NEVER do this on the frontend.
-    return new Promise<void>((resolve, reject) => {
-      setTimeout(() => {
-        if (email && password) {
-          // Simulated success for UI testing
-          localStorage.setItem('admin_token', 'simulated_jwt_token_for_ui_testing');
-          setIsAuthenticated(true);
-          setUser({ email });
-          resolve();
-        } else {
-          reject(new Error('Email and password are required.'));
-        }
-      }, 1000);
+    if (!supabase) throw new Error('Supabase is not configured for this deployment.');
+    if (!email.trim() || !password) throw new Error('Email and password are required.');
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
     });
+
+    if (error || !data.user) throw new Error(error?.message || 'Login failed.');
+
+    try {
+      await ensureAdmin(data.user.id);
+    } catch (verificationError) {
+      await supabase.auth.signOut();
+      throw verificationError;
+    }
+
+    setUser(data.user);
+    setIsAuthenticated(true);
   };
 
   const logout = async () => {
-    // TODO: Connect to backend API to invalidate session
-    localStorage.removeItem('admin_token');
+    if (supabase) await supabase.auth.signOut();
     setIsAuthenticated(false);
     setUser(null);
   };
@@ -74,8 +116,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (context === undefined) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 }

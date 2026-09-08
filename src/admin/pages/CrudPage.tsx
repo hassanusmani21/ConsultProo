@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Check, Edit2, FileUp, Plus, RotateCcw, Trash2, UploadCloud, X } from 'lucide-react';
 import { useData } from '../../data/DataContext';
+import { supabase } from '../../lib/supabase';
 
 type FieldType = 'text' | 'textarea' | 'number' | 'checkbox' | 'select' | 'list' | 'image' | 'images' | 'file';
 
@@ -62,7 +63,7 @@ const configs: Record<string, CollectionConfig> = {
       { path: 'sampleChapters', label: 'Sample Chapters', type: 'list' },
       { path: 'price', label: 'Price' },
       { path: 'currency', label: 'Currency', type: 'select', options: ['INR', 'USD', 'AED', 'EUR'] },
-      { path: 'pdfUrl', label: 'PDF File', type: 'file', accept: 'application/pdf' },
+      { path: 'storagePath', label: 'Secure Product PDF', type: 'file', accept: 'application/pdf' },
       { path: 'purchaseUrl', label: 'Purchase URL' },
       { path: 'pagesCount', label: 'Pages Count' },
       { path: 'format', label: 'Format' },
@@ -93,6 +94,7 @@ const configs: Record<string, CollectionConfig> = {
       { path: 'status', label: 'Status', type: 'select', options: ['available', 'coming_soon'] },
       { path: 'includes', label: 'Included Files', type: 'list' },
       { path: 'lockedDrawingUrl', label: 'Locked Drawing URL' },
+      { path: 'storagePath', label: 'Secure Product PDF', type: 'file', accept: 'application/pdf' },
       { path: 'featured', label: 'Featured', type: 'checkbox' },
       { path: 'published', label: 'Published', type: 'checkbox' },
     ],
@@ -115,6 +117,7 @@ const configs: Record<string, CollectionConfig> = {
       { path: 'price', label: 'Price' },
       { path: 'currency', label: 'Currency', type: 'select', options: ['INR', 'USD', 'AED', 'EUR'] },
       { path: 'purchaseUrl', label: 'Purchase URL' },
+      { path: 'storagePath', label: 'Secure Product PDF', type: 'file', accept: 'application/pdf' },
       { path: 'workflowStep', label: 'Workflow Step' },
       { path: 'parameters.engine', label: 'Engine' },
       { path: 'parameters.aspectRatio', label: 'Aspect Ratio' },
@@ -278,12 +281,13 @@ export default function CrudPage({ collection }: CrudPageProps) {
   const config = configs[collection];
   const items = useMemo(() => data[config.collection] ?? [], [data, config.collection]);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [formData, setFormData] = useState<any>(() => emptyItemFor(config));
+  const [formData, setFormData] = useState<any>(() => ({ ...emptyItemFor(config), id: crypto.randomUUID() }));
   const [notice, setNotice] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   const openCreate = () => {
     setEditingId(null);
-    setFormData(emptyItemFor(config));
+    setFormData({ ...emptyItemFor(config), id: crypto.randomUUID() });
   };
 
   const openEdit = (item: any) => {
@@ -313,36 +317,75 @@ export default function CrudPage({ collection }: CrudPageProps) {
     }
 
     try {
-      const dataUrls = await Promise.all(selectedFiles.map(readFileAsDataUrl));
+      const itemId = formData.id || editingId || crypto.randomUUID();
+      let uploadedValues: string[];
+
+      if (!supabase) {
+        uploadedValues = await Promise.all(selectedFiles.map(readFileAsDataUrl));
+      } else {
+        const isPrivateProductFile = field.type === 'file';
+        const bucket = isPrivateProductFile ? 'product-files' : 'cms-assets';
+        const folder = isPrivateProductFile
+          ? (collection === 'ebooks' ? 'ebooks' : collection === 'villaPlans' ? 'villa-plans' : 'prompts')
+          : `cms/${collection}`;
+
+        uploadedValues = [];
+        for (const file of selectedFiles) {
+          const suffix = isPrivateProductFile ? 'pdf' : `${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '-')}`;
+          const path = isPrivateProductFile ? `${folder}/${itemId}.pdf` : `${folder}/${suffix}`;
+          const { error } = await supabase.storage.from(bucket).upload(path, file, {
+            upsert: true,
+            contentType: file.type,
+            cacheControl: '3600',
+          });
+          if (error) throw new Error(`Upload failed: ${error.message}`);
+          uploadedValues.push(isPrivateProductFile
+            ? path
+            : supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl);
+        }
+      }
+
       setFormData((current: any) => {
         const nextValue = field.type === 'images'
-          ? [...(Array.isArray(getValue(current, field.path)) ? getValue(current, field.path) : []), ...dataUrls]
-          : dataUrls[0];
-        return setValue(current, field.path, nextValue);
+          ? [...(Array.isArray(getValue(current, field.path)) ? getValue(current, field.path) : []), ...uploadedValues]
+          : uploadedValues[0];
+        const next = setValue(current, field.path, nextValue);
+        return { ...next, id: current.id || itemId };
       });
-      setNotice(`${selectedFiles.length} file${selectedFiles.length === 1 ? '' : 's'} attached. Save the record to publish the change.`);
+      setNotice(`${selectedFiles.length} file${selectedFiles.length === 1 ? '' : 's'} uploaded. Save the record to publish the change.`);
     } catch (error) {
       setNotice(error instanceof Error ? error.message : 'The file could not be uploaded.');
     }
   };
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (editingId) {
-      updateItem(config.collection, editingId, formData);
-      setNotice(`${config.title} item updated.`);
-    } else {
-      addItem(config.collection, formData);
-      setNotice(`${config.title} item created.`);
-      setFormData(emptyItemFor(config));
+    setIsSaving(true);
+    try {
+      if (editingId) {
+        await updateItem(config.collection, editingId, formData);
+        setNotice(`${config.title} item updated in Supabase.`);
+      } else {
+        await addItem(config.collection, formData);
+        setNotice(`${config.title} item created in Supabase.`);
+        setFormData({ ...emptyItemFor(config), id: crypto.randomUUID() });
+      }
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'The record could not be saved.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const handleDelete = (item: any) => {
+  const handleDelete = async (item: any) => {
     if (!window.confirm(`Delete "${item.title || item.name || item.id}"?`)) return;
-    deleteItem(config.collection, item.id);
-    if (editingId === item.id) openCreate();
-    setNotice(`${config.title} item deleted.`);
+    try {
+      await deleteItem(config.collection, item.id);
+      if (editingId === item.id) openCreate();
+      setNotice(`${config.title} item deleted from Supabase.`);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'The record could not be deleted.');
+    }
   };
 
   return (
@@ -437,7 +480,7 @@ export default function CrudPage({ collection }: CrudPageProps) {
           <div className="mb-5 flex items-center justify-between gap-4 border-b border-white/10 pb-4">
             <div>
               <div className="text-lg font-bold text-white">{editingId ? 'Edit Record' : 'Create Record'}</div>
-              <div className="text-xs text-[#9a9da8]">{editingId ? editingId : 'A new local CMS item'}</div>
+              <div className="text-xs text-[#9a9da8]">{editingId ? editingId : 'Saved to the shared Supabase CMS'}</div>
             </div>
             {editingId && (
               <button

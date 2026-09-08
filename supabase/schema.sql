@@ -255,3 +255,108 @@ $$;
 
 revoke all on function public.mark_order_paid(uuid, text, text, bigint, text, text) from public;
 grant execute on function public.mark_order_paid(uuid, text, text, bigint, text, text) to service_role;
+
+-- CMS content is stored as flexible JSON so the existing dashboard collections can
+-- share one secure data layer without a new table for every content type.
+create table if not exists public.cms_content (
+  collection text not null check (char_length(trim(collection)) between 1 and 80),
+  item_id text not null check (char_length(trim(item_id)) between 1 and 200),
+  data jsonb not null default '{}'::jsonb,
+  published boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (collection, item_id)
+);
+
+create index if not exists cms_content_collection_idx on public.cms_content (collection);
+create index if not exists cms_content_published_idx on public.cms_content (published) where published = true;
+
+create or replace function public.set_cms_content_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists cms_content_updated_at on public.cms_content;
+create trigger cms_content_updated_at
+before update on public.cms_content
+for each row execute function public.set_cms_content_updated_at();
+
+-- Admin access is an explicit allow-list. Create the auth user in Supabase
+-- Authentication first, then insert its UUID into this table once.
+create table if not exists public.admin_users (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+
+create or replace function public.is_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.admin_users where user_id = auth.uid()
+  );
+$$;
+
+revoke all on function public.is_admin() from public;
+grant execute on function public.is_admin() to authenticated;
+
+alter table public.cms_content enable row level security;
+alter table public.admin_users enable row level security;
+
+drop policy if exists "Public can read published CMS content" on public.cms_content;
+create policy "Public can read published CMS content"
+on public.cms_content for select
+to anon, authenticated
+using (published = true or public.is_admin());
+
+drop policy if exists "Admins can manage CMS content" on public.cms_content;
+create policy "Admins can manage CMS content"
+on public.cms_content for all
+to authenticated
+using (public.is_admin())
+with check (public.is_admin());
+
+drop policy if exists "Users can read their own admin membership" on public.admin_users;
+create policy "Users can read their own admin membership"
+on public.admin_users for select
+to authenticated
+using (user_id = auth.uid());
+
+-- The browser can display active catalog prices and admins can maintain them.
+drop policy if exists "Public can read active products" on public.products;
+create policy "Public can read active products"
+on public.products for select
+to anon, authenticated
+using (active = true or public.is_admin());
+
+drop policy if exists "Admins can manage products" on public.products;
+create policy "Admins can manage products"
+on public.products for all
+to authenticated
+using (public.is_admin())
+with check (public.is_admin());
+
+insert into storage.buckets (id, name, public)
+values ('cms-assets', 'cms-assets', true)
+on conflict (id) do update set public = true;
+
+drop policy if exists "Public can read CMS assets" on storage.objects;
+create policy "Public can read CMS assets"
+on storage.objects for select
+to anon, authenticated
+using (bucket_id = 'cms-assets');
+
+drop policy if exists "Admins can manage CMS assets" on storage.objects;
+create policy "Admins can manage CMS assets"
+on storage.objects for all
+to authenticated
+using (bucket_id in ('cms-assets', 'product-files') and public.is_admin())
+with check (bucket_id in ('cms-assets', 'product-files') and public.is_admin());

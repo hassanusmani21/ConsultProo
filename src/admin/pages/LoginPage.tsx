@@ -79,8 +79,8 @@ export default function LoginPage() {
               </div>
             )}
             
-            <div className="text-xs text-[#9a9da8] italic p-3 bg-[#181a24] border border-white/5 rounded-lg">
-              Note: This is a UI placeholder. Real authentication will be handled by a secure backend API. You can enter any values to preview the UI.
+            <div className="text-xs text-[#9a9da8] p-3 bg-[#181a24] border border-white/5 rounded-lg">
+              Use the approved Supabase admin account for this project.
             </div>
 
             <button

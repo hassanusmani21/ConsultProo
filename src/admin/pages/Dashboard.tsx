@@ -50,8 +50,8 @@ export default function Dashboard() {
         <div className="text-sm text-[#9a9da8] space-y-3">
           <p>Welcome to the secure CMS for your website. This architecture separates your content management from the public-facing UI.</p>
           <ul className="list-disc pl-5 space-y-2">
-            <li><strong>Data Layer:</strong> Currently operating on local storage. Ready to connect to Firebase, Supabase, or custom REST APIs.</li>
-            <li><strong>Images:</strong> File upload UI is prepared. Real uploads will be processed when cloud storage is linked.</li>
+            <li><strong>Data Layer:</strong> Content and catalog records are stored in Supabase and shared across visitors and admin sessions.</li>
+            <li><strong>Images:</strong> Uploaded images use the public CMS asset bucket; paid PDFs use private product storage and secure access links.</li>
             <li><strong>Authentication:</strong> Currently in UI-preview mode. Requires backend JWT/Session validation for production.</li>
           </ul>
         </div>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useData } from '../../data/DataContext';
 import { Plus, Edit2, Trash2, X, Check, UploadCloud } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 
 export default function ProjectsPage() {
   const { data, addItem, updateItem, deleteItem } = useData();
@@ -18,6 +19,21 @@ export default function ProjectsPage() {
     featured: false,
     published: true,
   });
+
+  const handleCoverUpload = async (file: File | undefined) => {
+    if (!file) return;
+    if (file.size > 3 * 1024 * 1024) return;
+    if (!supabase) return;
+    const path = `cms/projects/${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '-')}`;
+    const { error } = await supabase.storage.from('cms-assets').upload(path, file, {
+      upsert: false,
+      contentType: file.type,
+      cacheControl: '3600',
+    });
+    if (error) return;
+    const coverImage = supabase.storage.from('cms-assets').getPublicUrl(path).data.publicUrl;
+    setFormData((current) => ({ ...current, coverImage }));
+  };
 
   const handleOpenForm = (project?: any) => {
     if (project) {
@@ -46,12 +62,12 @@ export default function ProjectsPage() {
     setEditingId(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (editingId) {
-      updateItem('projects', editingId, formData);
+      await updateItem('projects', editingId, formData);
     } else {
-      addItem('projects', formData);
+      await addItem('projects', formData);
     }
     handleCloseForm();
   };
@@ -131,9 +147,10 @@ export default function ProjectsPage() {
                   value={formData.coverImage} onChange={e => setFormData({...formData, coverImage: e.target.value})}
                   className="flex-1 bg-[#0e1015] border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#bfa37c]"
                 />
-                <button type="button" className="px-4 py-2 bg-[#181a24] border border-white/10 rounded-lg text-sm text-white flex items-center gap-2 hover:border-[#bfa37c]">
+                <label className="px-4 py-2 bg-[#181a24] border border-white/10 rounded-lg text-sm text-white flex items-center gap-2 hover:border-[#bfa37c] cursor-pointer">
                   <UploadCloud className="w-4 h-4" /> Upload
-                </button>
+                  <input type="file" accept="image/*" className="sr-only" onChange={(event) => void handleCoverUpload(event.target.files?.[0])} />
+                </label>
               </div>
             </div>
 
@@ -243,7 +260,7 @@ export default function ProjectsPage() {
                         </button>
                         <button 
                           onClick={() => {
-                            if(window.confirm('Are you sure you want to delete this project?')) deleteItem('projects', project.id);
+                            if(window.confirm('Are you sure you want to delete this project?')) void deleteItem('projects', project.id);
                           }}
                           className="p-2 rounded-lg bg-[#181a24] border border-white/5 text-red-400 hover:bg-red-400/10 transition-colors"
                         >

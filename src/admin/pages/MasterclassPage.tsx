@@ -11,10 +11,14 @@ export default function MasterclassPage() {
     setFormData(data.masterclass);
   }, [data.masterclass]);
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    updateData('masterclass', formData);
-    setNotice('Masterclass updated.');
+    try {
+      await updateData('masterclass', formData);
+      setNotice('Masterclass updated in Supabase.');
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Masterclass could not be saved.');
+    }
   };
 
   return (

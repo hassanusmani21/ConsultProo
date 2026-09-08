@@ -30,10 +30,14 @@ export default function SectionsPage() {
     }));
   };
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    updateData('sections', sections);
-    setNotice('Sections updated.');
+    try {
+      await updateData('sections', sections);
+      setNotice('Sections updated in Supabase.');
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Sections could not be saved.');
+    }
   };
 
   return (
@@ -48,8 +52,7 @@ export default function SectionsPage() {
             type="button"
             onClick={() => {
               if (!window.confirm('Reset all CMS data to defaults?')) return;
-              resetData();
-              setNotice('CMS data reset.');
+              void resetData().then(() => setNotice('CMS data reset.')).catch((error) => setNotice(error instanceof Error ? error.message : 'CMS reset failed.'));
             }}
             className="flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2 text-sm font-bold uppercase tracking-wider text-white hover:bg-[#181a24]"
           >

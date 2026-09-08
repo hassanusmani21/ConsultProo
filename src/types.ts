@@ -74,7 +74,6 @@ export interface VillaPlan {
   description: string;
   price: string;
   currency: string;
-  pdfUrl?: string;
   purchaseUrl: string;
   status: 'available' | 'coming_soon';
   featured: boolean;
@@ -91,6 +90,7 @@ export interface EbookProduct {
   highlights: string[];
   price: string;
   currency: string;
+  pdfUrl?: string;
   purchaseUrl: string;
   pagesCount: string;
   format: string;

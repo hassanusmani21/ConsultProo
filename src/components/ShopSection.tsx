@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useNavigate } from 'react-router-dom';
 import { 
   BookOpen, 
   Home, 
@@ -27,6 +28,7 @@ interface ShopSectionProps {
 
 export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNavigateConsult }) => {
   const { data } = useData();
+  const navigate = useNavigate();
   const section = data.sections.shop;
   const [activeCategory, setActiveCategory] = useState<'all' | 'ebooks' | 'plans' | 'prompts'>('all');
   const [selectedEbook, setSelectedEbook] = useState<EbookProduct | null>(null);
@@ -34,7 +36,6 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
   const [selectedPrompt, setSelectedPrompt] = useState<AiPromptData | null>(null);
   const [copiedPromptId, setCopiedPromptId] = useState<string | null>(null);
   const [selectedPlotSize, setSelectedPlotSize] = useState<string>('');
-  const [purchaseSuccess, setPurchaseSuccess] = useState<boolean>(false);
   const ebooksList = data.ebooks.filter((item: EbookProduct & { published?: boolean }) => item.published !== false);
   const villaPlans = data.villaPlans.filter((item: VillaPlan & { published?: boolean }) => item.published !== false);
   const aiPromptsLibrary = data.aiPrompts.filter((item: AiPromptData & { published?: boolean }) => item.published !== false);
@@ -76,14 +77,9 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
     setTimeout(() => setCopiedPromptId(null), 2000);
   };
 
-  const handleSimulatePurchase = (productTitle: string) => {
+  const handleCheckout = (collection: string, productId: string) => {
     soundManager.playClick();
-    setPurchaseSuccess(true);
-    setTimeout(() => {
-      setPurchaseSuccess(false);
-      setSelectedEbook(null);
-      setSelectedPlan(null);
-    }, 2000);
+    navigate(`/checkout/${collection}/${productId}`);
   };
 
   return (
@@ -554,20 +550,13 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
                     </a>
                   )}
                   <button
-                    onClick={() => handleSimulatePurchase(selectedEbook.title)}
+                    onClick={() => handleCheckout('ebooks', selectedEbook.id)}
                     className="flex items-center gap-2 rounded-xl bg-[#12141a] px-6 py-3 text-xs font-sans font-bold uppercase tracking-[0.14em] text-[#ffffff] shadow-xl transition-all hover:bg-[#bfa37c] hover:text-[#12141a] active:scale-95"
                   >
-                  {purchaseSuccess ? (
-                    <>
-                      <Check className="w-4 h-4 text-emerald-400" />
-                      <span>Instant Access Unlocked!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Download className="w-4 h-4" />
-                      <span>BUY NOW · INSTANT DOWNLOAD</span>
-                    </>
-                  )}
+                  <>
+                    <Download className="w-4 h-4" />
+                    <span>BUY NOW · INSTANT DOWNLOAD</span>
+                  </>
                   </button>
                 </div>
               </div>
@@ -674,15 +663,14 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
                     )}
                   </button>
                 ) : (
-                  <a
-                    href={selectedPrompt.purchaseUrl || 'https://ahmedusmani.gumroad.com'}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    type="button"
+                    onClick={() => handleCheckout('ai-prompts', selectedPrompt.id)}
                     className="px-6 py-3 rounded-xl bg-[#12141a] text-[#ffffff] font-sans font-bold text-xs uppercase tracking-[0.14em] hover:bg-[#bfa37c] hover:text-[#12141a] active:scale-95 transition-all flex items-center justify-center gap-2 shadow-xl"
                   >
                     <Lock className="w-4 h-4" />
                     <span>Buy Prompt</span>
-                  </a>
+                  </button>
                 )}
               </div>
             </motion.div>
@@ -810,20 +798,13 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
                 </div>
 
                 <button
-                  onClick={() => handleSimulatePurchase(selectedPlan.title)}
+                  onClick={() => handleCheckout('villa-plans', selectedPlan.id)}
                   className="px-6 py-3 rounded-xl bg-[#12141a] text-[#ffffff] font-sans font-bold text-xs uppercase tracking-[0.14em] hover:bg-[#bfa37c] hover:text-[#12141a] active:scale-95 transition-all flex items-center gap-2 shadow-xl"
                 >
-                  {purchaseSuccess ? (
-                    <>
-                      <Check className="w-4 h-4 text-emerald-400" />
-                      <span>CAD Package Download Ready!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Download className="w-4 h-4" />
-                      <span>UNLOCK FULL DRAWING SET</span>
-                    </>
-                  )}
+                  <>
+                    <Download className="w-4 h-4" />
+                    <span>UNLOCK FULL DRAWING SET</span>
+                  </>
                 </button>
               </div>
             </motion.div>

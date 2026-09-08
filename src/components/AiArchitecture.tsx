@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Play, 
   Pause, 
@@ -52,6 +53,7 @@ export const AiArchitecture: React.FC<AiArchitectureProps> = ({
   onSetCursorText
 }) => {
   const { data } = useData();
+  const navigate = useNavigate();
   const section = data.sections.aiArchitecture;
   const aiPromptsLibrary = data.aiPrompts.filter((item: AiPromptData & { published?: boolean }) => item.published !== false);
   const [selectedCategory, setSelectedCategory] = useState<'ALL' | AiCategory>('ALL');
@@ -121,9 +123,9 @@ export const AiArchitecture: React.FC<AiArchitectureProps> = ({
       setTimeout(() => {
         setCopiedId(null);
       }, 2200);
-    } else if (prompt.purchaseUrl) {
+    } else {
       soundManager.playClick();
-      window.open(prompt.purchaseUrl, '_blank', 'noopener,noreferrer');
+      navigate(`/checkout/ai-prompts/${prompt.id}`);
     }
   };
 
@@ -545,15 +547,14 @@ export const AiArchitecture: React.FC<AiArchitectureProps> = ({
                     <span>{copiedId === selectedPromptModal.id ? 'COPIED' : 'COPY PROMPT'}</span>
                   </button>
                 ) : (
-                  <a
-                    href={selectedPromptModal.purchaseUrl || 'https://ahmedusmani.gumroad.com'}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/checkout/ai-prompts/${selectedPromptModal.id}`)}
                     className="px-5 py-2 rounded-lg bg-[#c5a880] text-[#090a0f] font-sans font-bold text-xs uppercase tracking-wider hover:bg-[#d8be96] flex items-center gap-1.5"
                   >
                     <Lock className="w-3.5 h-3.5" />
                     <span>BUY PROMPT ({formatPrice(selectedPromptModal.price || '29', selectedPromptModal.currency)})</span>
-                  </a>
+                  </button>
                 )}
               </div>
             </motion.div>

@@ -145,7 +145,7 @@ begin
     p_order_id, product_ref.id, product_ref.name, product_ref.price, product_ref.currency,
     customer_ref, p_razorpay_order_id, 'PENDING_PAYMENT', nullif(trim(p_client_order_id), '')
   )
-  on conflict (client_order_id) do nothing;
+  on conflict do nothing;
 
   if not found then
     select * into existing_order

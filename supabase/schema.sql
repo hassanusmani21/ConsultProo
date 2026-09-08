@@ -52,16 +52,19 @@ create table if not exists public.orders (
   razorpay_payment_id text unique,
   status text not null default 'PENDING_PAYMENT' check (status in ('PENDING_PAYMENT', 'PAID')),
   paid_at timestamptz,
+  client_order_id text,
   created_at timestamptz not null default now()
 );
 
 alter table public.orders add column if not exists razorpay_order_id text;
 alter table public.orders add column if not exists razorpay_payment_id text;
 alter table public.orders add column if not exists paid_at timestamptz;
+alter table public.orders add column if not exists client_order_id text;
 alter table public.orders drop constraint if exists orders_status_check;
 alter table public.orders add constraint orders_status_check check (status in ('PENDING_PAYMENT', 'PAID'));
 create unique index if not exists orders_razorpay_order_id_idx on public.orders (razorpay_order_id) where razorpay_order_id is not null;
 create unique index if not exists orders_razorpay_payment_id_idx on public.orders (razorpay_payment_id) where razorpay_payment_id is not null;
+create unique index if not exists orders_client_order_id_idx on public.orders (client_order_id) where client_order_id is not null;
 create index if not exists customers_email_idx on public.customers (lower(email));
 create index if not exists orders_customer_id_idx on public.orders (customer_id);
 create index if not exists orders_created_at_idx on public.orders (created_at desc);
@@ -90,6 +93,8 @@ values ('product-files', 'product-files', false)
 on conflict (id) do update set public = false;
 
 drop function if exists public.create_pending_order(uuid, text, text, text, text, text, numeric, text);
+drop function if exists public.create_pending_order(uuid, text, text, text, text, text);
+drop function if exists public.create_pending_order(uuid, text, text, text, text, text, text);
 
 create or replace function public.create_pending_order(
   p_order_id uuid,
@@ -97,7 +102,8 @@ create or replace function public.create_pending_order(
   p_customer_email text,
   p_customer_phone text,
   p_product_id text,
-  p_razorpay_order_id text
+  p_razorpay_order_id text,
+  p_client_order_id text
 )
 returns json
 language plpgsql
@@ -107,7 +113,20 @@ as $$
 declare
   customer_ref uuid;
   product_ref public.products%rowtype;
+  existing_order public.orders%rowtype;
 begin
+  select * into existing_order
+  from public.orders
+  where client_order_id = nullif(trim(p_client_order_id), '');
+
+  if found then
+    return json_build_object(
+      'order_id', existing_order.id,
+      'razorpay_order_id', existing_order.razorpay_order_id,
+      'status', existing_order.status
+    );
+  end if;
+
   select * into product_ref
   from public.products
   where id = trim(p_product_id) and active = true;
@@ -121,11 +140,24 @@ begin
   returning id into customer_ref;
 
   insert into public.orders (
-    id, product_id, product_name, product_price, product_currency, customer_id, razorpay_order_id, status
+    id, product_id, product_name, product_price, product_currency, customer_id, razorpay_order_id, status, client_order_id
   ) values (
     p_order_id, product_ref.id, product_ref.name, product_ref.price, product_ref.currency,
-    customer_ref, p_razorpay_order_id, 'PENDING_PAYMENT'
-  );
+    customer_ref, p_razorpay_order_id, 'PENDING_PAYMENT', nullif(trim(p_client_order_id), '')
+  )
+  on conflict (client_order_id) do nothing;
+
+  if not found then
+    select * into existing_order
+    from public.orders
+    where client_order_id = nullif(trim(p_client_order_id), '');
+
+    return json_build_object(
+      'order_id', existing_order.id,
+      'razorpay_order_id', existing_order.razorpay_order_id,
+      'status', existing_order.status
+    );
+  end if;
 
   return json_build_object(
     'order_id', p_order_id,
@@ -136,8 +168,8 @@ begin
 end;
 $$;
 
-revoke all on function public.create_pending_order(uuid, text, text, text, text, text) from public;
-grant execute on function public.create_pending_order(uuid, text, text, text, text, text) to service_role;
+revoke all on function public.create_pending_order(uuid, text, text, text, text, text, text) from public;
+grant execute on function public.create_pending_order(uuid, text, text, text, text, text, text) to service_role;
 
 drop function if exists public.mark_order_paid(uuid, text, text, bigint, text);
 

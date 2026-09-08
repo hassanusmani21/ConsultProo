@@ -19,6 +19,10 @@ const getConfig = () => ({
   razorpayKeyId: process.env.RAZORPAY_KEY_ID,
   razorpayKeySecret: process.env.RAZORPAY_KEY_SECRET,
   accessTokenSecret: process.env.ACCESS_TOKEN_SECRET,
+  appUrl: process.env.APP_URL?.replace(/\/$/, ''),
+  resendApiKey: process.env.RESEND_API_KEY,
+  emailFrom: process.env.EMAIL_FROM,
+  supportEmail: process.env.SUPPORT_EMAIL,
 });
 
 const supabaseHeaders = (serviceRoleKey) => ({
@@ -52,7 +56,7 @@ const signatureMatches = (secret, razorpayOrderId, razorpayPaymentId, signature)
 const getStoredOrder = async (config, orderId) => {
   const query = new URLSearchParams({
     id: `eq.${orderId}`,
-    select: 'id,status,product_id,product_price,product_currency,razorpay_order_id,razorpay_payment_id',
+    select: 'id,status,product_id,product_name,product_price,product_currency,customer_id,razorpay_order_id,razorpay_payment_id',
     limit: '1',
   });
   const response = await fetch(`${config.supabaseUrl}/rest/v1/orders?${query}`, {
@@ -61,6 +65,20 @@ const getStoredOrder = async (config, orderId) => {
   if (!response.ok) throw new Error(`Order lookup failed with status ${response.status}`);
   const orders = await response.json();
   return orders[0] || null;
+};
+
+const getCustomer = async (config, customerId) => {
+  const query = new URLSearchParams({
+    id: `eq.${customerId}`,
+    select: 'full_name,email',
+    limit: '1',
+  });
+  const response = await fetch(`${config.supabaseUrl}/rest/v1/customers?${query}`, {
+    headers: supabaseHeaders(config.supabaseServiceRoleKey),
+  });
+  if (!response.ok) throw new Error(`Customer lookup failed with status ${response.status}`);
+  const customers = await response.json();
+  return customers[0] || null;
 };
 
 const getRazorpayResource = async (config, path) => {
@@ -92,6 +110,92 @@ const createAccessToken = (secret, orderId, productId) => createHmac('sha256', s
   .digest('base64url');
 
 const hashAccessToken = (token) => createHash('sha256').update(token).digest('hex');
+
+const escapeHtml = (value) => String(value ?? '')
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#039;');
+
+const sendPurchaseConfirmation = async (request, config, order, customer, accessToken, paymentId) => {
+  if (!config.resendApiKey || !config.emailFrom || !config.supportEmail || !customer?.email) {
+    return { sent: false, skipped: true };
+  }
+
+  const appUrl = config.appUrl || new URL(request.url).origin;
+  const accessUrl = `${appUrl}/api/access?token=${encodeURIComponent(accessToken)}`;
+  const customerName = customer.full_name || 'there';
+  const productName = order.product_name || 'your purchase';
+  const orderId = order.id;
+  const supportEmail = config.supportEmail;
+  const escapedAccessUrl = escapeHtml(accessUrl);
+  const escapedCustomerName = escapeHtml(customerName);
+  const escapedProductName = escapeHtml(productName);
+  const escapedOrderId = escapeHtml(orderId);
+  const escapedSupportEmail = escapeHtml(supportEmail);
+
+  const html = `<!doctype html>
+<html lang="en">
+  <body style="margin:0;background:#f5f4ef;color:#12141a;font-family:Arial,Helvetica,sans-serif;line-height:1.5;">
+    <div style="max-width:600px;margin:0 auto;padding:32px 16px;">
+      <div style="background:#ffffff;border:1px solid #e3e0d8;border-radius:16px;padding:32px 24px;">
+        <p style="margin:0 0 12px;color:#9e825d;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;">Purchase confirmed</p>
+        <h1 style="margin:0 0 16px;font-size:28px;line-height:1.2;">Thank you, ${escapedCustomerName}.</h1>
+        <p style="margin:0 0 24px;color:#4a4d57;">Your payment was verified successfully and your order is confirmed.</p>
+        <div style="border:1px solid #e3e0d8;border-radius:10px;background:#faf8f5;padding:16px;margin-bottom:24px;">
+          <p style="margin:0 0 8px;"><strong>Product:</strong> ${escapedProductName}</p>
+          <p style="margin:0;"><strong>Order ID:</strong> ${escapedOrderId}</p>
+        </div>
+        <p style="margin:0 0 24px;text-align:center;">
+          <a href="${escapedAccessUrl}" style="display:inline-block;background:#12141a;border-radius:8px;color:#ffffff;padding:13px 20px;text-decoration:none;font-size:13px;font-weight:700;letter-spacing:1px;">Access Your Product</a>
+        </p>
+        <p style="margin:0;color:#747783;font-size:13px;">Need help? Contact <a href="mailto:${escapedSupportEmail}" style="color:#9e825d;">${escapedSupportEmail}</a>.</p>
+      </div>
+    </div>
+  </body>
+</html>`;
+  const text = `Purchase confirmed\n\nThank you, ${customerName}.\n\nProduct: ${productName}\nOrder ID: ${orderId}\n\nAccess Your Product: ${accessUrl}\n\nNeed help? Contact ${supportEmail}.`;
+
+  try {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${config.resendApiKey}`,
+        'Content-Type': 'application/json',
+        'Idempotency-Key': `purchase-confirmation/${paymentId || order.razorpay_payment_id}`,
+      },
+      body: JSON.stringify({
+        from: config.emailFrom,
+        to: [customer.email],
+        reply_to: supportEmail,
+        subject: `Purchase confirmed: ${productName}`,
+        html,
+        text,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error('Purchase confirmation email failed:', response.status);
+      return { sent: false };
+    }
+
+    return { sent: true };
+  } catch (error) {
+    console.error('Purchase confirmation email request failed:', error);
+    return { sent: false };
+  }
+};
+
+const sendPurchaseConfirmationForOrder = async (request, config, order, accessToken, paymentId) => {
+  try {
+    const customer = await getCustomer(config, order.customer_id);
+    return sendPurchaseConfirmation(request, config, order, customer, accessToken, paymentId);
+  } catch (error) {
+    console.error('Purchase confirmation customer lookup failed:', error);
+    return { sent: false };
+  }
+};
 
 const markOrderPaid = async (config, payload, amount, currency, accessTokenHash) => {
   const response = await fetch(`${config.supabaseUrl}/rest/v1/rpc/mark_order_paid`, {
@@ -131,16 +235,7 @@ export default async (request) => {
 
   const hasOrderStorage = config.supabaseUrl && config.supabaseServiceRoleKey && config.accessTokenSecret;
   if (!hasOrderStorage) {
-    if (!signatureMatches(config.razorpayKeySecret, payload.razorpayOrderId, payload.razorpayPaymentId, payload.razorpaySignature)) {
-      return jsonResponse({ error: 'Payment signature verification failed.' }, 400);
-    }
-
-    return jsonResponse({
-      verified: true,
-      status: 'PAID',
-      paymentId: payload.razorpayPaymentId,
-      localMode: true,
-    });
+    return jsonResponse({ error: 'Order storage is not configured. Payment cannot be verified yet.' }, 503);
   }
 
   let storedOrder;
@@ -188,14 +283,17 @@ export default async (request) => {
       if (!ensured.response.ok) {
         return jsonResponse({ error: 'Payment was already verified but product access could not be prepared.' }, 409);
       }
+      const email = await sendPurchaseConfirmationForOrder(request, config, storedOrder, accessToken, payload.razorpayPaymentId);
       return jsonResponse({
         verified: true,
         alreadyProcessed: true,
         orderId: storedOrder.id,
         status: 'PAID',
         paymentId: payload.razorpayPaymentId,
+        productName: storedOrder.product_name,
         accessUrl: `/api/access?token=${encodeURIComponent(accessToken)}`,
         deliveryType: product.delivery_type || 'pdf',
+        emailSent: email.sent,
       });
     }
     return jsonResponse({ error: 'This order has already been processed.' }, 409);
@@ -247,13 +345,17 @@ export default async (request) => {
     return jsonResponse({ error: 'Payment was verified but the order could not be updated.' }, 409);
   }
 
+  const email = await sendPurchaseConfirmationForOrder(request, config, storedOrder, accessToken, payload.razorpayPaymentId);
+
   return jsonResponse({
     verified: true,
     alreadyProcessed: Boolean(marked.result?.already_processed),
     orderId: payload.orderId,
     status: 'PAID',
     paymentId: payload.razorpayPaymentId,
+    productName: storedOrder.product_name,
     accessUrl: `/api/access?token=${encodeURIComponent(accessToken)}`,
     deliveryType: product.delivery_type || 'pdf',
+    emailSent: email.sent,
   });
 };

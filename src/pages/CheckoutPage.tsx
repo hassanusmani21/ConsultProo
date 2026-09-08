@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, CheckCircle2, CreditCard, Mail, Phone, User } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useData } from '../data/DataContext';
@@ -17,6 +17,7 @@ interface PaymentOrderDetails {
   amount: number;
   currency: string;
   keyId: string;
+  productName?: string;
 }
 
 const getAmountInPaise = (price: string | number | undefined) => {
@@ -83,6 +84,52 @@ export default function CheckoutPage() {
   const [paymentOrder, setPaymentOrder] = useState<PaymentOrderDetails | null>(null);
   const [paymentOpened, setPaymentOpened] = useState(false);
   const [orderStatus, setOrderStatus] = useState<'PENDING_PAYMENT' | 'PAID' | null>(null);
+  const [checkoutStorageHydrated, setCheckoutStorageHydrated] = useState(false);
+  const submitLockRef = useRef(false);
+  const checkoutAttemptIdRef = useRef<string | null>(null);
+
+  const checkoutStorageKey = `checkout:${collection || 'unknown'}:${productId || 'unknown'}`;
+
+  const clearSavedCheckout = () => {
+    try {
+      window.sessionStorage.removeItem(checkoutStorageKey);
+    } catch {
+      // Session storage can be unavailable in privacy-restricted browsers.
+    }
+  };
+
+  useEffect(() => {
+    try {
+      const saved = window.sessionStorage.getItem(checkoutStorageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed?.form && parsed?.paymentOrder) {
+          setForm(parsed.form);
+          setPaymentOrder(parsed.paymentOrder);
+          setOrderStatus('PENDING_PAYMENT');
+          checkoutAttemptIdRef.current = parsed.checkoutAttemptId || null;
+        }
+      }
+    } catch {
+      clearSavedCheckout();
+    } finally {
+      setCheckoutStorageHydrated(true);
+    }
+  }, [checkoutStorageKey]);
+
+  useEffect(() => {
+    if (!checkoutStorageHydrated || !paymentOrder) return;
+
+    try {
+      window.sessionStorage.setItem(checkoutStorageKey, JSON.stringify({
+        form,
+        paymentOrder,
+        checkoutAttemptId: checkoutAttemptIdRef.current,
+      }));
+    } catch {
+      // Session storage is an enhancement; payment flow remains usable without it.
+    }
+  }, [checkoutStorageHydrated, checkoutStorageKey, form, paymentOrder]);
 
   const product = useMemo(() => {
     const collectionKey = collection === 'villa-plans'
@@ -104,6 +151,8 @@ export default function CheckoutPage() {
     setPaymentOrder(null);
     setPaymentOpened(false);
     setOrderStatus(null);
+    checkoutAttemptIdRef.current = null;
+    clearSavedCheckout();
   };
 
   const validateForm = () => {
@@ -149,13 +198,14 @@ export default function CheckoutPage() {
 
       setOrderStatus('PAID');
       setPaymentOpened(false);
+      clearSavedCheckout();
 
       navigate('/purchase-success', {
         replace: true,
         state: {
           orderId: details.orderId,
           customerName: form.fullName.trim(),
-          productName: productDetails?.title || 'Purchased product',
+          productName: result.productName || productDetails?.title || 'Purchased product',
           accessUrl: result.accessUrl,
           deliveryType: result.deliveryType || 'pdf',
           localMode: Boolean(result.localMode),
@@ -172,12 +222,15 @@ export default function CheckoutPage() {
   };
 
   const openPayment = async (details: PaymentOrderDetails) => {
+    if (paymentOpened || orderStatus === 'PAID') return;
+
     setIsSubmitting(true);
     try {
       await loadRazorpayScript();
       const Razorpay = (window as any).Razorpay;
       if (!Razorpay) throw new Error('Payment interface could not be loaded.');
       let successCallbackReceived = false;
+      let paymentFailureReceived = false;
 
       const checkout = new Razorpay({
         key: configuredRazorpayKeyId || details.keyId,
@@ -194,20 +247,25 @@ export default function CheckoutPage() {
         notes: { internalOrderId: details.orderId },
         theme: { color: '#bfa37c' },
         handler: (response: any) => {
+          if (successCallbackReceived) return;
           successCallbackReceived = true;
           void verifyPayment(details, response);
         },
         modal: {
           ondismiss: () => {
             setPaymentOpened(false);
-            if (!successCallbackReceived) setSubmitError('Payment window closed. Your order remains PENDING_PAYMENT.');
+            setOrderStatus('PENDING_PAYMENT');
+            if (!successCallbackReceived && !paymentFailureReceived) setSubmitError('Payment window closed. Your order remains PENDING_PAYMENT. You can try again.');
           },
         },
       });
 
       checkout.on('payment.failed', () => {
+        if (successCallbackReceived) return;
+        paymentFailureReceived = true;
         setPaymentOpened(false);
-        setSubmitError('Payment was not completed. Your order remains PENDING_PAYMENT.');
+        setOrderStatus('PENDING_PAYMENT');
+        setSubmitError('Payment was not completed. Your order remains PENDING_PAYMENT. You can try again.');
       });
       checkout.open();
       setPaymentOpened(true);
@@ -221,16 +279,20 @@ export default function CheckoutPage() {
   };
 
   const handleSubmit = async () => {
-    if (paymentOrder) {
-      await openPayment(paymentOrder);
-      return;
-    }
-    if (!validateForm() || !productDetails) return;
-
-    setIsSubmitting(true);
-    setSubmitError('');
+    if (submitLockRef.current || paymentOpened) return;
+    submitLockRef.current = true;
 
     try {
+      if (paymentOrder) {
+        await openPayment(paymentOrder);
+        return;
+      }
+      if (!validateForm() || !productDetails) return;
+
+      setIsSubmitting(true);
+      setSubmitError('');
+      checkoutAttemptIdRef.current ||= window.crypto.randomUUID();
+
       const response = await fetch('/api/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -238,6 +300,7 @@ export default function CheckoutPage() {
           amount: productDetails.amountInPaise,
           currency: productDetails.currency,
           receipt: `receipt_${productDetails.id}_${Date.now()}`.slice(0, 40),
+          idempotencyKey: checkoutAttemptIdRef.current,
           customer: {
             fullName: form.fullName,
             email: form.email,
@@ -252,6 +315,9 @@ export default function CheckoutPage() {
       if (!result.orderId || !result.razorpayOrderId || !result.keyId || !result.amount || !result.currency) {
         throw new Error('Payment order details were incomplete. Please try again.');
       }
+      if (result.amount !== productDetails.amountInPaise || result.currency !== productDetails.currency) {
+        throw new Error('The product price has changed. Please refresh the page and try again.');
+      }
 
       const nextPaymentOrder: PaymentOrderDetails = {
         orderId: result.orderId,
@@ -259,6 +325,7 @@ export default function CheckoutPage() {
         amount: result.amount,
         currency: result.currency,
         keyId: result.keyId,
+        productName: result.product?.name,
       };
       setPaymentOrder(nextPaymentOrder);
       setOrderStatus('PENDING_PAYMENT');
@@ -268,6 +335,7 @@ export default function CheckoutPage() {
       setSubmitError(error instanceof Error ? error.message : 'We could not save your order. Please try again.');
     } finally {
       setIsSubmitting(false);
+      submitLockRef.current = false;
     }
   };
 
@@ -329,7 +397,7 @@ export default function CheckoutPage() {
                 <div className="relative"><Phone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9e825d]" /><input id="checkout-mobile" type="tel" value={form.mobile} onChange={(event) => updateField('mobile', event.target.value)} aria-invalid={Boolean(errors.mobile)} inputMode="tel" className="w-full rounded-lg border border-[#12141a]/15 bg-[#faf8f5] py-3 pl-10 pr-4 text-sm outline-none transition-colors focus:border-[#9e825d] aria-[invalid=true]:border-red-500" placeholder="+91 98765 43210" /></div>
                 {errors.mobile && <p className="mt-1.5 text-xs text-red-600">{errors.mobile}</p>}
               </div>
-              <button type="submit" disabled={isSubmitting || orderStatus === 'PAID'} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#12141a] px-5 py-3.5 text-xs font-bold uppercase tracking-[0.14em] text-white transition-colors hover:bg-[#9e825d] disabled:cursor-not-allowed disabled:opacity-70">
+              <button type="submit" disabled={isSubmitting || paymentOpened || orderStatus === 'PAID'} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#12141a] px-5 py-3.5 text-xs font-bold uppercase tracking-[0.14em] text-white transition-colors hover:bg-[#9e825d] disabled:cursor-not-allowed disabled:opacity-70">
                 {orderStatus === 'PAID' ? <CheckCircle2 className="h-4 w-4 text-emerald-400" /> : <CreditCard className="h-4 w-4" />}
                 {isSubmitting ? 'Verifying Payment...' : orderStatus === 'PAID' ? 'Payment Verified' : paymentOpened ? 'Payment Window Opened' : paymentOrder ? 'Open Payment Again' : 'Proceed to Payment'}
               </button>

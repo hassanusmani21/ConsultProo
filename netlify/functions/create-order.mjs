@@ -35,6 +35,7 @@ const validateGenericOrder = (payload) => {
 const validateRequest = (payload) => {
   const customer = payload?.customer;
   const productId = normalizeText(payload?.product?.id);
+  const idempotencyKey = normalizeText(payload?.idempotencyKey || payload?.idempotency_key);
   const fullName = normalizeText(customer?.fullName);
   const email = normalizeText(customer?.email).toLowerCase();
   const mobile = normalizeText(customer?.mobile).replace(/[\s-]/g, '');
@@ -43,8 +44,9 @@ const validateRequest = (payload) => {
   if (email.length > 254 || !emailPattern.test(email)) return { error: 'A valid email address is required.' };
   if (!indianMobilePattern.test(mobile)) return { error: 'A valid Indian mobile number is required.' };
   if (!productId || productId.length > 120) return { error: 'A valid product is required.' };
+  if (!idempotencyKey || idempotencyKey.length > 100) return { error: 'A valid checkout idempotency key is required.' };
 
-  return { customer: { fullName, email, mobile }, productId };
+  return { customer: { fullName, email, mobile }, productId, idempotencyKey };
 };
 
 const getConfig = () => ({
@@ -74,6 +76,20 @@ const getProduct = async (supabaseUrl, serviceRoleKey, productId) => {
   if (!response.ok) throw new Error(`Product lookup failed with status ${response.status}`);
   const products = await response.json();
   return products[0] || null;
+};
+
+const getExistingOrder = async (supabaseUrl, serviceRoleKey, idempotencyKey) => {
+  const query = new URLSearchParams({
+    client_order_id: `eq.${idempotencyKey}`,
+    select: 'id,status,razorpay_order_id',
+    limit: '1',
+  });
+  const response = await fetch(`${supabaseUrl}/rest/v1/orders?${query}`, {
+    headers: supabaseHeaders(serviceRoleKey),
+  });
+  if (!response.ok) throw new Error(`Existing order lookup failed with status ${response.status}`);
+  const orders = await response.json();
+  return orders[0] || null;
 };
 
 const createRazorpayOrder = async ({ keyId, keySecret, amount, currency, receipt, productId, internalOrderId }) => {
@@ -121,7 +137,7 @@ export default async (request) => {
     return jsonResponse({ error: 'Payment service is not configured yet.' }, 503);
   }
 
-  if (isGenericOrder || !config.supabaseUrl || !config.supabaseServiceRoleKey) {
+  if (isGenericOrder) {
     const validatedOrder = validateGenericOrder(payload);
     if (validatedOrder.error) return jsonResponse({ error: validatedOrder.error }, 400);
 
@@ -149,7 +165,7 @@ export default async (request) => {
   }
 
   if (!config.supabaseUrl || !config.supabaseServiceRoleKey) {
-    return jsonResponse({ error: 'Order storage is not configured yet.' }, 503);
+    return jsonResponse({ error: 'Order storage is not configured. Payment cannot be started yet.' }, 503);
   }
 
   let product;
@@ -174,6 +190,36 @@ export default async (request) => {
   const amountInPaise = Math.round(productPrice * 100);
   if (amountInPaise < minimumAmountPaise) {
     return jsonResponse({ error: `This product price must be at least ${minimumAmountPaise} paise.` }, 400);
+  }
+
+  let existingOrder;
+  try {
+    existingOrder = await getExistingOrder(
+      config.supabaseUrl,
+      config.supabaseServiceRoleKey,
+      validated.idempotencyKey,
+    );
+  } catch (error) {
+    console.error('Existing order lookup failed:', error);
+    return jsonResponse({ error: 'The order could not be checked. Please try again.' }, 502);
+  }
+
+  if (existingOrder?.razorpay_order_id) {
+    return jsonResponse({
+      order_id: existingOrder.razorpay_order_id,
+      amount: amountInPaise,
+      currency: productCurrency,
+      orderId: existingOrder.id,
+      status: existingOrder.status,
+      razorpayOrderId: existingOrder.razorpay_order_id,
+      keyId: config.razorpayKeyId,
+      product: {
+        id: product.id,
+        name: product.name,
+        price: productPrice,
+        currency: productCurrency,
+      },
+    }, 200);
   }
 
   const internalOrderId = randomUUID();
@@ -210,6 +256,7 @@ export default async (request) => {
         p_customer_phone: validated.customer.mobile,
         p_product_id: product.id,
         p_razorpay_order_id: razorpayOrder.id,
+        p_client_order_id: validated.idempotencyKey,
       }),
     });
   } catch (error) {
@@ -217,18 +264,22 @@ export default async (request) => {
     return jsonResponse({ error: 'The order could not be saved. Please try again.' }, 502);
   }
 
-  if (!databaseResponse.ok) {
+  const databaseResult = await databaseResponse.json().catch(() => ({}));
+  if (!databaseResponse.ok || !databaseResult?.order_id || !databaseResult?.razorpay_order_id) {
     console.error('Order database insert failed after Razorpay order creation:', databaseResponse.status);
     return jsonResponse({ error: 'The order could not be saved. Please try again.' }, 502);
   }
 
+  const persistedOrderId = databaseResult.order_id;
+  const persistedRazorpayOrderId = databaseResult.razorpay_order_id;
+
   return jsonResponse({
-    order_id: razorpayOrder.id,
-    amount: razorpayOrder.amount,
-    currency: razorpayOrder.currency,
-    orderId: internalOrderId,
-    status: 'PENDING_PAYMENT',
-    razorpayOrderId: razorpayOrder.id,
+    order_id: persistedRazorpayOrderId,
+    amount: amountInPaise,
+    currency: productCurrency,
+    orderId: persistedOrderId,
+    status: databaseResult.status || 'PENDING_PAYMENT',
+    razorpayOrderId: persistedRazorpayOrderId,
     keyId: config.razorpayKeyId,
     product: {
       id: product.id,

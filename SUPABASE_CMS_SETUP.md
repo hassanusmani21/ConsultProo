@@ -33,3 +33,13 @@ Keep `SUPABASE_SERVICE_ROLE_KEY`, Razorpay secrets, Resend keys, and `ACCESS_TOK
 - Saving or deleting records from the admin dashboard writes to Supabase, so every browser sees the same result.
 - Publishing or unpublishing an ebook, villa plan, or premium prompt also updates its `products.active` value and price. Checkout reads that table server-side.
 - Paid PDF uploads go into the private `product-files` bucket. Public images go into the `cms-assets` bucket.
+
+## Admin password recovery and OTP
+
+In Supabase, open **Authentication → URL Configuration** and add this redirect URL:
+
+```text
+https://your-live-domain.vercel.app/admin/reset-password
+```
+
+The admin login includes a password-reset email flow. The admin **Security** page also supports changing the password and enrolling a TOTP authenticator app. Once enrolled, the OTP is required after the password at every admin login.

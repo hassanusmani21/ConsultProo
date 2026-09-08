@@ -17,7 +17,8 @@ import {
   LayoutPanelTop,
   Package,
   Star,
-  Layers
+  Layers,
+  ShieldCheck
 } from 'lucide-react';
 
 export default function AdminLayout() {
@@ -40,6 +41,7 @@ export default function AdminLayout() {
     { label: 'BIM Layers', path: '/admin/bim-layers', icon: Layers },
     { label: 'Sections', path: '/admin/sections', icon: LayoutPanelTop },
     { label: 'Masterclass', path: '/admin/masterclass', icon: GraduationCap },
+    { label: 'Security', path: '/admin/security', icon: ShieldCheck },
   ];
 
   const NavLinks = () => (

@@ -8,6 +8,8 @@ import CrudPage from './pages/CrudPage';
 import SectionsPage from './pages/SectionsPage';
 import MasterclassPage from './pages/MasterclassPage';
 import LoginPage from './pages/LoginPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
+import SecurityPage from './pages/SecurityPage';
 
 function ProtectedAdmin() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -29,6 +31,7 @@ export default function AdminApp() {
   return (
     <Routes>
       <Route path="login" element={<LoginPage />} />
+      <Route path="reset-password" element={<ResetPasswordPage />} />
       <Route path="/" element={<ProtectedAdmin />}>
         <Route index element={<Dashboard />} />
         <Route path="profile" element={<ProfilePage />} />
@@ -44,6 +47,7 @@ export default function AdminApp() {
         <Route path="featured-prompts" element={<CrudPage collection="featuredPrompts" />} />
         <Route path="bim-layers" element={<CrudPage collection="bimLayers" />} />
         <Route path="masterclass" element={<MasterclassPage />} />
+        <Route path="security" element={<SecurityPage />} />
       </Route>
     </Routes>
   );

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, ArrowUpRight, Check, Copy, CheckCircle2, Download, BookOpen, Layers, Sparkles } from 'lucide-react';
 import { DigitalProduct } from '../types';
 import { soundManager } from '../utils/sound';
+import { PriceDisplay } from './PriceDisplay';
 
 interface ProductModalProps {
   product: DigitalProduct | null;
@@ -84,6 +85,17 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose, on
             <p className="text-sm sm:text-base text-[#d4d4ce] leading-relaxed">
               {product.description}
             </p>
+
+            {product.price !== undefined && (
+              <PriceDisplay
+                price={product.price}
+                compareAtPrice={product.compareAtPrice}
+                currency={product.currency}
+                currentClassName="text-2xl font-sans font-extrabold text-[#c5a880]"
+                compareClassName="text-sm font-sans text-[#8e929b] line-through"
+                badgeClassName="text-xs font-bold text-[#c5a880]"
+              />
+            )}
 
             {/* Specifications Bar */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 p-4 rounded-xl bg-[#13151c] border border-white/10 text-xs font-mono">

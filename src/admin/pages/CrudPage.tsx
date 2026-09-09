@@ -62,7 +62,7 @@ const configs: Record<string, CollectionConfig> = {
       { path: 'highlights', label: 'Highlights', type: 'list' },
       { path: 'sampleChapters', label: 'Sample Chapters', type: 'list' },
       { path: 'price', label: 'Sale Price' },
-      { path: 'compareAtPrice', label: 'Original Price (optional)' },
+      { path: 'compareAtPrice', label: 'Original Price (optional)', placeholder: 'Must be higher than sale price' },
       { path: 'currency', label: 'Currency', type: 'select', options: ['INR', 'USD', 'AED', 'EUR'] },
       { path: 'storagePath', label: 'Secure Product File', type: 'file' },
       { path: 'purchaseUrl', label: 'Purchase URL' },
@@ -90,7 +90,7 @@ const configs: Record<string, CollectionConfig> = {
       { path: 'floorPlanPreview', label: 'Floor Plan Preview', type: 'image' },
       { path: 'description', label: 'Description', type: 'textarea' },
       { path: 'price', label: 'Sale Price' },
-      { path: 'compareAtPrice', label: 'Original Price (optional)' },
+      { path: 'compareAtPrice', label: 'Original Price (optional)', placeholder: 'Must be higher than sale price' },
       { path: 'currency', label: 'Currency', type: 'select', options: ['INR', 'USD', 'AED', 'EUR'] },
       { path: 'purchaseUrl', label: 'Purchase URL' },
       { path: 'status', label: 'Status', type: 'select', options: ['available', 'coming_soon'] },
@@ -117,7 +117,7 @@ const configs: Record<string, CollectionConfig> = {
       { path: 'beforeImage', label: 'Before Image', type: 'image' },
       { path: 'videoUrl', label: 'Video URL' },
       { path: 'price', label: 'Sale Price' },
-      { path: 'compareAtPrice', label: 'Original Price (optional)' },
+      { path: 'compareAtPrice', label: 'Original Price (optional)', placeholder: 'Must be higher than sale price' },
       { path: 'currency', label: 'Currency', type: 'select', options: ['INR', 'USD', 'AED', 'EUR'] },
       { path: 'purchaseUrl', label: 'Purchase URL' },
       { path: 'storagePath', label: 'Secure Product File', type: 'file' },
@@ -175,7 +175,7 @@ const configs: Record<string, CollectionConfig> = {
       { path: 'thumbnail', label: 'Thumbnail Image', type: 'image' },
       { path: 'previewImages', label: 'Preview Images', type: 'images' },
       { path: 'price', label: 'Sale Price' },
-      { path: 'compareAtPrice', label: 'Original Price (optional)' },
+      { path: 'compareAtPrice', label: 'Original Price (optional)', placeholder: 'Must be higher than sale price' },
       { path: 'currency', label: 'Currency', type: 'select', options: ['INR', 'USD', 'AED', 'EUR'] },
       { path: 'badge', label: 'Badge' },
       { path: 'specs.format', label: 'Format' },
@@ -281,6 +281,20 @@ const getSafeFileExtension = (fileName: string) => {
   return extension.slice(0, 12) || 'bin';
 };
 
+const validateProductPricing = (collection: string, item: any) => {
+  if (!['ebooks', 'villaPlans', 'aiPrompts', 'digitalProducts'].includes(collection)) return '';
+
+  const salePrice = Number(item?.price);
+  const originalPriceText = String(item?.compareAtPrice ?? '').trim();
+  const originalPrice = Number(originalPriceText);
+
+  if (originalPriceText && (!Number.isFinite(originalPrice) || originalPrice <= salePrice)) {
+    return 'Original price must be higher than the sale price. Example: Sale ₹500, Original ₹1,599.';
+  }
+
+  return '';
+};
+
 interface CrudPageProps {
   collection: keyof typeof configs;
 }
@@ -373,6 +387,12 @@ export default function CrudPage({ collection }: CrudPageProps) {
     event.preventDefault();
     setIsSaving(true);
     try {
+      const pricingError = validateProductPricing(config.collection, formData);
+      if (pricingError) {
+        setNotice(pricingError);
+        return;
+      }
+
       if (editingId) {
         await updateItem(config.collection, editingId, formData);
         setNotice(`${config.title} item updated in Supabase.`);
@@ -578,9 +598,13 @@ export default function CrudPage({ collection }: CrudPageProps) {
                               <img src={value} alt="Preview" className="h-16 w-24 rounded border border-white/10 object-cover" />
                             )}
                             {field.type === 'file' && typeof value === 'string' && value && (
-                              <a href={value} target="_blank" rel="noreferrer" className="text-xs font-bold text-[#bfa37c] hover:text-white">
-                                Open attached file
-                              </a>
+                              /^https?:\/\//i.test(value) ? (
+                                <a href={value} target="_blank" rel="noreferrer" className="text-xs font-bold text-[#bfa37c] hover:text-white">
+                                  Open attached file
+                                </a>
+                              ) : (
+                                <span className="text-xs text-emerald-300">Private file saved for paid delivery: {value}</span>
+                              )
                             )}
                           </div>
                         </div>

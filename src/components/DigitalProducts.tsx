@@ -5,6 +5,7 @@ import { useData } from '../data/DataContext';
 import { DigitalProduct } from '../types';
 import { ProductModal } from './ProductModal';
 import { soundManager } from '../utils/sound';
+import { PriceDisplay } from './PriceDisplay';
 
 interface DigitalProductsProps {
   onSetCursorText: (text?: string) => void;
@@ -119,6 +120,16 @@ export const DigitalProducts: React.FC<DigitalProductsProps> = ({ onSetCursorTex
                   <p className="text-xs font-sans text-[#a8a8a8] leading-[1.6] line-clamp-2">
                     {prod.tagline}
                   </p>
+                  {prod.price !== undefined && (
+                    <PriceDisplay
+                      price={prod.price}
+                      compareAtPrice={prod.compareAtPrice}
+                      currency={prod.currency}
+                      currentClassName="text-base font-sans font-bold text-[#c5a880]"
+                      compareClassName="text-xs font-sans text-[#8e929b] line-through"
+                      badgeClassName="text-[10px] font-bold text-[#c5a880]"
+                    />
+                  )}
                 </div>
 
                 {/* Highlights preview */}

@@ -64,7 +64,7 @@ const configs: Record<string, CollectionConfig> = {
       { path: 'price', label: 'Sale Price' },
       { path: 'compareAtPrice', label: 'Original Price (optional)' },
       { path: 'currency', label: 'Currency', type: 'select', options: ['INR', 'USD', 'AED', 'EUR'] },
-      { path: 'storagePath', label: 'Secure Product PDF', type: 'file', accept: 'application/pdf' },
+      { path: 'storagePath', label: 'Secure Product File', type: 'file' },
       { path: 'purchaseUrl', label: 'Purchase URL' },
       { path: 'pagesCount', label: 'Pages Count' },
       { path: 'format', label: 'Format' },
@@ -96,7 +96,7 @@ const configs: Record<string, CollectionConfig> = {
       { path: 'status', label: 'Status', type: 'select', options: ['available', 'coming_soon'] },
       { path: 'includes', label: 'Included Files', type: 'list' },
       { path: 'lockedDrawingUrl', label: 'Locked Drawing URL' },
-      { path: 'storagePath', label: 'Secure Product PDF', type: 'file', accept: 'application/pdf' },
+      { path: 'storagePath', label: 'Secure Product File', type: 'file' },
       { path: 'featured', label: 'Featured', type: 'checkbox' },
       { path: 'published', label: 'Published', type: 'checkbox' },
     ],
@@ -120,7 +120,7 @@ const configs: Record<string, CollectionConfig> = {
       { path: 'compareAtPrice', label: 'Original Price (optional)' },
       { path: 'currency', label: 'Currency', type: 'select', options: ['INR', 'USD', 'AED', 'EUR'] },
       { path: 'purchaseUrl', label: 'Purchase URL' },
-      { path: 'storagePath', label: 'Secure Product PDF', type: 'file', accept: 'application/pdf' },
+      { path: 'storagePath', label: 'Secure Product File', type: 'file' },
       { path: 'workflowStep', label: 'Workflow Step' },
       { path: 'parameters.engine', label: 'Engine' },
       { path: 'parameters.aspectRatio', label: 'Aspect Ratio' },
@@ -276,6 +276,11 @@ const readFileAsDataUrl = (file: File) => new Promise<string>((resolve, reject) 
   reader.readAsDataURL(file);
 });
 
+const getSafeFileExtension = (fileName: string) => {
+  const extension = fileName.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'bin';
+  return extension.slice(0, 12) || 'bin';
+};
+
 interface CrudPageProps {
   collection: keyof typeof configs;
 }
@@ -335,8 +340,10 @@ export default function CrudPage({ collection }: CrudPageProps) {
 
         uploadedValues = [];
         for (const file of selectedFiles) {
-          const suffix = isPrivateProductFile ? 'pdf' : `${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '-')}`;
-          const path = isPrivateProductFile ? `${folder}/${itemId}.pdf` : `${folder}/${suffix}`;
+          const suffix = isPrivateProductFile
+            ? getSafeFileExtension(file.name)
+            : `${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '-')}`;
+          const path = isPrivateProductFile ? `${folder}/${itemId}.${suffix}` : `${folder}/${suffix}`;
           const { error } = await supabase.storage.from(bucket).upload(path, file, {
             upsert: true,
             contentType: file.type,
@@ -553,13 +560,13 @@ export default function CrudPage({ collection }: CrudPageProps) {
                             type="text"
                             value={value ?? ''}
                             onChange={(event) => updateField(field, event.target.value)}
-                            placeholder={field.type === 'image' ? 'Paste an image URL or upload below' : 'Paste a PDF URL or upload below'}
+                            placeholder={field.type === 'image' ? 'Paste an image URL or upload below' : 'Paste a file URL or upload below'}
                             className={commonClass}
                           />
                           <div className="flex flex-wrap items-center gap-3">
                             <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-white/10 bg-[#181a24] px-3 py-2 text-xs font-bold uppercase tracking-wider text-white transition-colors hover:border-[#bfa37c]">
                               {field.type === 'image' ? <UploadCloud className="h-4 w-4" /> : <FileUp className="h-4 w-4" />}
-                              <span>{field.type === 'image' ? 'Choose Image' : 'Choose PDF'}</span>
+                              <span>{field.type === 'image' ? 'Choose Image' : 'Choose File'}</span>
                               <input
                                 type="file"
                                 accept={field.accept || (field.type === 'image' ? 'image/*' : '*/*')}

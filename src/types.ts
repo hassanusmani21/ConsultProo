@@ -28,6 +28,7 @@ export interface AiPromptData {
   afterLabel?: string;
   videoUrl?: string;
   price?: string;
+  compareAtPrice?: string | number;
   currency?: string;
   purchaseUrl?: string;
   featured?: boolean;
@@ -73,6 +74,7 @@ export interface VillaPlan {
   floorPlanPreview: string;
   description: string;
   price: string;
+  compareAtPrice?: string | number;
   currency: string;
   purchaseUrl: string;
   status: 'available' | 'coming_soon';
@@ -89,6 +91,7 @@ export interface EbookProduct {
   description: string;
   highlights: string[];
   price: string;
+  compareAtPrice?: string | number;
   currency: string;
   pdfUrl?: string;
   purchaseUrl: string;
@@ -117,6 +120,9 @@ export interface DigitalProduct {
   contentHighlights: string[];
   promptSnippet?: string;
   linkText?: string;
+  price?: string | number;
+  compareAtPrice?: string | number;
+  currency?: string;
 }
 
 export interface PromptDemo {

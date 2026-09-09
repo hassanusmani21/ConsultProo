@@ -95,13 +95,24 @@ export default function SectionsPage() {
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
-              {['eyebrow', 'title', 'subtitle', 'primaryButton', 'secondaryButton', 'copyright'].map((field) => (
+              {['eyebrow', 'title', 'subtitle', 'defaultCategory', 'primaryButton', 'secondaryButton', 'copyright'].map((field) => (
                 section[field] !== undefined && (
                   <div key={field} className={field === 'subtitle' || field === 'copyright' ? 'md:col-span-2' : ''}>
                     <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[#9a9da8]">
                       {field.replace(/([A-Z])/g, ' $1')}
                     </label>
-                    {field === 'subtitle' || field === 'copyright' ? (
+                    {field === 'defaultCategory' && key === 'shop' ? (
+                      <select
+                        value={section[field] || 'all'}
+                        onChange={(event) => updateSection(key, field, event.target.value)}
+                        className="w-full rounded-lg border border-white/10 bg-[#0e1015] px-4 py-2.5 text-sm text-white outline-none focus:border-[#bfa37c]"
+                      >
+                        <option value="all">All Products</option>
+                        <option value="ebooks">Ebooks &amp; Guides</option>
+                        <option value="prompts">Prompt Library</option>
+                        <option value="plans">Ready Villa Plans</option>
+                      </select>
+                    ) : field === 'subtitle' || field === 'copyright' ? (
                       <textarea
                         rows={3}
                         value={section[field]}

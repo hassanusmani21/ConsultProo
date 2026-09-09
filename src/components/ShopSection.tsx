@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -20,6 +20,7 @@ import {
 import { useData } from '../data/DataContext';
 import { EbookProduct, VillaPlan, AiPromptData } from '../types';
 import { soundManager } from '../utils/sound';
+import { PriceDisplay } from './PriceDisplay';
 
 interface ShopSectionProps {
   onSetCursorText?: (text?: string) => void;
@@ -30,7 +31,8 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
   const { data } = useData();
   const navigate = useNavigate();
   const section = data.sections.shop;
-  const [activeCategory, setActiveCategory] = useState<'all' | 'ebooks' | 'plans' | 'prompts'>('all');
+  type ShopCategory = 'all' | 'ebooks' | 'plans' | 'prompts';
+  const [activeCategory, setActiveCategory] = useState<ShopCategory>('all');
   const [selectedEbook, setSelectedEbook] = useState<EbookProduct | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<VillaPlan | null>(null);
   const [selectedPrompt, setSelectedPrompt] = useState<AiPromptData | null>(null);
@@ -40,11 +42,12 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
   const villaPlans = data.villaPlans.filter((item: VillaPlan & { published?: boolean }) => item.published !== false);
   const aiPromptsLibrary = data.aiPrompts.filter((item: AiPromptData & { published?: boolean }) => item.published !== false);
 
-  const formatPrice = (price: string | number | undefined, currency = 'INR') => {
-    const numericValue = Number(String(price ?? '').replace(/[^0-9.-]/g, ''));
-    if (!Number.isFinite(numericValue)) return price || '';
-    return new Intl.NumberFormat('en-IN', { style: 'currency', currency }).format(numericValue);
-  };
+  useEffect(() => {
+    const defaultCategory = section?.defaultCategory;
+    setActiveCategory(defaultCategory === 'ebooks' || defaultCategory === 'plans' || defaultCategory === 'prompts' || defaultCategory === 'all'
+      ? defaultCategory
+      : 'all');
+  }, [section?.defaultCategory]);
 
   if (section?.published === false) return null;
 
@@ -235,7 +238,7 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
                   {/* Price & Action Button */}
                   <div className="pt-3 mt-3 border-t border-[#12141a]/10 flex items-center justify-between gap-3">
                     <span className="text-base font-sans font-extrabold text-[#12141a]">
-                      {formatPrice(ebook.price, ebook.currency)}
+                      <PriceDisplay price={ebook.price} compareAtPrice={ebook.compareAtPrice} currency={ebook.currency} currentClassName="text-base font-sans font-extrabold text-[#12141a]" />
                     </span>
                     <button
                       onClick={(e) => {
@@ -255,7 +258,7 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
         )}
 
         {/* ================= CATEGORY 2: PROMPT LIBRARY ================= */}
-        {activeCategory === 'prompts' && (
+        {(activeCategory === 'all' || activeCategory === 'prompts') && (
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 border-b border-[#12141a]/10 pb-3">
               <div className="flex items-center gap-2 text-xs font-sans font-bold text-[#12141a] tracking-[0.15em] uppercase">
@@ -434,7 +437,7 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
                     <div>
                       <span className="text-[11px] font-sans text-[#747783] block">Full Drawing Set</span>
                       <span className="text-lg font-sans font-extrabold text-[#12141a]">
-                        {formatPrice(plan.price, plan.currency)}
+                        <PriceDisplay price={plan.price} compareAtPrice={plan.compareAtPrice} currency={plan.currency} currentClassName="text-lg font-sans font-extrabold text-[#12141a]" />
                       </span>
                     </div>
                     <button
@@ -535,7 +538,7 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
               <div className="pt-4 border-t border-[#12141a]/10 flex items-center justify-between">
                 <div>
                   <span className="text-[10px] font-sans text-[#747783] uppercase tracking-wider block">One-time Investment</span>
-                  <span className="text-2xl font-sans font-extrabold text-[#12141a]">{formatPrice(selectedEbook.price, selectedEbook.currency)}</span>
+                  <PriceDisplay price={selectedEbook.price} compareAtPrice={selectedEbook.compareAtPrice} currency={selectedEbook.currency} currentClassName="text-2xl font-sans font-extrabold text-[#12141a]" />
                 </div>
 
                 <div className="flex flex-wrap justify-end gap-3">
@@ -640,9 +643,12 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
                   <span className="text-[10px] font-sans text-[#747783] uppercase tracking-wider block">
                     {selectedPrompt.type === 'FREE' ? 'Free Prompt' : 'Premium Prompt Matrix'}
                   </span>
-                  <span className="text-2xl font-sans font-extrabold text-[#12141a]">
-                    {selectedPrompt.type === 'FREE' ? formatPrice(0, selectedPrompt.currency) : formatPrice(selectedPrompt.price || '29', selectedPrompt.currency)}
-                  </span>
+                  <PriceDisplay
+                    price={selectedPrompt.type === 'FREE' ? 0 : selectedPrompt.price || '29'}
+                    compareAtPrice={selectedPrompt.type === 'FREE' ? undefined : selectedPrompt.compareAtPrice}
+                    currency={selectedPrompt.currency}
+                    currentClassName="text-2xl font-sans font-extrabold text-[#12141a]"
+                  />
                 </div>
 
                 {selectedPrompt.type === 'FREE' ? (
@@ -794,7 +800,7 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
               <div className="pt-4 border-t border-[#12141a]/10 flex items-center justify-between">
                 <div>
                   <span className="text-[10px] font-sans text-[#747783] uppercase tracking-wider block">Full Architecture Package</span>
-                  <span className="text-2xl font-sans font-extrabold text-[#12141a]">{formatPrice(selectedPlan.price, selectedPlan.currency)}</span>
+                  <PriceDisplay price={selectedPlan.price} compareAtPrice={selectedPlan.compareAtPrice} currency={selectedPlan.currency} currentClassName="text-2xl font-sans font-extrabold text-[#12141a]" />
                 </div>
 
                 <button

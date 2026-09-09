@@ -25,6 +25,7 @@ import { aiVideosList } from '../data/aiPromptsData';
 import { useData } from '../data/DataContext';
 import { AiCategory, AiPromptData } from '../types';
 import { soundManager } from '../utils/sound';
+import { PriceDisplay } from './PriceDisplay';
 
 interface AiArchitectureProps {
   onNavigateConsultation?: () => void;
@@ -41,12 +42,6 @@ const CATEGORIES: { id: 'ALL' | AiCategory; label: string }[] = [
   { id: 'LIGHTING', label: 'Lighting' },
   { id: 'VISUALIZATION', label: 'Visualization' }
 ];
-
-const formatPrice = (price: string | number | undefined, currency = 'INR') => {
-  const numericValue = Number(String(price ?? '').replace(/[^0-9.-]/g, ''));
-  if (!Number.isFinite(numericValue)) return price || '';
-  return new Intl.NumberFormat('en-IN', { style: 'currency', currency }).format(numericValue);
-};
 
 export const AiArchitecture: React.FC<AiArchitectureProps> = ({ 
   onNavigateConsultation,
@@ -450,7 +445,7 @@ export const AiArchitecture: React.FC<AiArchitectureProps> = ({
                     className="w-full py-4 rounded-xl bg-[#c5a880] text-[#090a0f] font-sans font-bold text-xs uppercase tracking-[0.16em] hover:bg-[#d8be96] active:scale-95 transition-all flex items-center justify-center gap-2 shadow-xl shadow-[#c5a880]/15"
                   >
                     <Lock className="w-4 h-4" />
-                    <span>GET FULL PROMPT ({formatPrice(activePrompt.price || '29', activePrompt.currency)}) →</span>
+                    <span className="inline-flex items-baseline gap-1.5">GET FULL PROMPT (<PriceDisplay price={activePrompt.price || '29'} compareAtPrice={activePrompt.compareAtPrice} currency={activePrompt.currency} currentClassName="text-inherit" compareClassName="text-[#090a0f]/60 line-through" badgeClassName="text-[#090a0f]/70" />) →</span>
                   </button>
                 )}
 
@@ -522,7 +517,7 @@ export const AiArchitecture: React.FC<AiArchitectureProps> = ({
                         {selectedPromptModal.previewText}
                       </p>
                       <div className="text-xs text-[#c5a880] font-sans">
-                        Full prompt matrix available upon purchase ({formatPrice(selectedPromptModal.price || '29', selectedPromptModal.currency)}).
+                        Full prompt matrix available upon purchase (<PriceDisplay price={selectedPromptModal.price || '29'} compareAtPrice={selectedPromptModal.compareAtPrice} currency={selectedPromptModal.currency} currentClassName="text-[#c5a880]" compareClassName="text-[#8e929b] line-through" />).
                       </div>
                     </div>
                   )}
@@ -553,7 +548,7 @@ export const AiArchitecture: React.FC<AiArchitectureProps> = ({
                     className="px-5 py-2 rounded-lg bg-[#c5a880] text-[#090a0f] font-sans font-bold text-xs uppercase tracking-wider hover:bg-[#d8be96] flex items-center gap-1.5"
                   >
                     <Lock className="w-3.5 h-3.5" />
-                    <span>BUY PROMPT ({formatPrice(selectedPromptModal.price || '29', selectedPromptModal.currency)})</span>
+                    <span className="inline-flex items-baseline gap-1.5">BUY PROMPT (<PriceDisplay price={selectedPromptModal.price || '29'} compareAtPrice={selectedPromptModal.compareAtPrice} currency={selectedPromptModal.currency} currentClassName="text-inherit" compareClassName="text-[#090a0f]/60 line-through" badgeClassName="text-[#090a0f]/70" />)</span>
                   </button>
                 )}
               </div>

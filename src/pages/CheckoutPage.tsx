@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, CheckCircle2, CreditCard, Mail, Phone, User } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useData } from '../data/DataContext';
+import { PriceDisplay } from '../components/PriceDisplay';
 
 interface CheckoutForm {
   fullName: string;
@@ -25,16 +26,6 @@ const getAmountInPaise = (price: string | number | undefined) => {
   return Number.isFinite(numericValue) ? Math.round(numericValue * 100) : 0;
 };
 
-const formatPrice = (price: string | number | undefined, currency = 'INR') => {
-  const numericValue = Number(String(price ?? '').replace(/[^0-9.-]/g, ''));
-  if (!Number.isFinite(numericValue)) return price || 'Price unavailable';
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency,
-    maximumFractionDigits: 0,
-  }).format(numericValue);
-};
-
 const getProductDetails = (product: any) => {
   if (!product) return null;
 
@@ -42,7 +33,8 @@ const getProductDetails = (product: any) => {
     id: product.id,
     title: product.title || product.name || 'Selected product',
     image: product.coverImage || product.previewImage || product.thumbnail || product.resultImage || product.image,
-    price: formatPrice(product.price, product.currency),
+    price: product.price,
+    compareAtPrice: product.compareAtPrice,
     amountInPaise: getAmountInPaise(product.price),
     currency: product.currency || 'INR',
   };
@@ -375,7 +367,12 @@ export default function CheckoutPage() {
             <h2 className="text-xl font-bold leading-snug">{productDetails.title}</h2>
             <div className="mt-4 flex items-center justify-between border-t border-[#12141a]/10 pt-4">
               <span className="text-xs uppercase tracking-wider text-[#747783]">Total</span>
-              <span className="text-2xl font-extrabold">{paymentOrder ? formatPrice(paymentOrder.amount / 100, paymentOrder.currency) : productDetails.price}</span>
+              <PriceDisplay
+                price={paymentOrder ? paymentOrder.amount / 100 : productDetails.price}
+                compareAtPrice={productDetails.compareAtPrice}
+                currency={paymentOrder?.currency || productDetails.currency}
+                currentClassName="text-2xl font-extrabold"
+              />
             </div>
           </section>
 

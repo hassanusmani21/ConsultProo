@@ -40,7 +40,7 @@ const defaultData = {
   masterclass: mockData.initialMasterclass,
   sections: {
     hero: { title: 'AR. AHMED USMANI', eyebrow: 'Architect · Interior · AI', subtitle: 'Architecture, interiors, BIM, and AI design workflows.', primaryButton: 'View Work', secondaryButton: 'Shop Resources', published: true },
-    shop: { title: 'STUDIO SHOP.', eyebrow: 'DIGITAL PRODUCTS & READY DRAWINGS', subtitle: 'Practical guides, structured AI frameworks, and ready-to-build architectural villa drawing sets.', published: true },
+    shop: { title: 'STUDIO SHOP.', eyebrow: 'DIGITAL PRODUCTS & READY DRAWINGS', subtitle: 'Practical guides, structured AI frameworks, and ready-to-build architectural villa drawing sets.', defaultCategory: 'ebooks', published: true },
     aiArchitecture: { title: 'AI ARCHITECTURE.', eyebrow: 'GENERATIVE DESIGN SYSTEMS', subtitle: 'Prompt systems, videos, and architectural AI workflows.', published: true },
     consult: { title: 'WORK WITH AHMED.', eyebrow: 'COMMISSIONS & ADVISORY', subtitle: 'Architecture, interiors, and AI consultation services.', published: true },
     about: { title: 'AHMED USMANI.', eyebrow: 'PRACTICE & PHILOSOPHY', subtitle: 'Bridging the precision of building engineering with the generative possibilities of artificial intelligence.', published: true },

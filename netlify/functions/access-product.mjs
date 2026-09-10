@@ -16,7 +16,7 @@ const supabaseHeaders = (serviceRoleKey) => ({
 
 const getConfig = () => ({
   supabaseUrl: process.env.SUPABASE_URL?.replace(/\/$/, ''),
-  supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+  supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY,
   accessTokenSecret: process.env.ACCESS_TOKEN_SECRET,
   storageBucket: process.env.PRODUCT_STORAGE_BUCKET || 'product-files',
 });

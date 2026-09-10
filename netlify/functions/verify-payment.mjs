@@ -15,7 +15,7 @@ const normalizeText = (value) => typeof value === 'string' ? value.trim() : '';
 
 const getConfig = () => ({
   supabaseUrl: process.env.SUPABASE_URL?.replace(/\/$/, ''),
-  supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+  supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY,
   razorpayKeyId: process.env.RAZORPAY_KEY_ID,
   razorpayKeySecret: process.env.RAZORPAY_KEY_SECRET,
   accessTokenSecret: process.env.ACCESS_TOKEN_SECRET,

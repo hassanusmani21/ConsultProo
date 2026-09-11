@@ -1,5 +1,5 @@
 import accessProduct from '../netlify/functions/access-product.mjs';
 
-export default {
-  fetch: accessProduct,
-};
+export const fetch = accessProduct;
+export const GET = accessProduct;
+export default accessProduct;

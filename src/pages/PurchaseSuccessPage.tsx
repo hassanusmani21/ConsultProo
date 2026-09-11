@@ -6,10 +6,12 @@ interface PurchaseSuccessState {
   orderId?: string;
   customerName?: string;
   productName?: string;
+  productId?: string;
   accessUrl?: string;
   deliveryType?: 'pdf' | 'video' | 'course';
   localMode?: boolean;
   paymentId?: string;
+  emailSent?: boolean;
 }
 
 const isProtectedAccessUrl = (value: unknown): value is string => (
@@ -89,6 +91,10 @@ export default function PurchaseSuccessPage() {
             <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#747783]">Product</dt>
             <dd className="text-sm font-bold sm:text-right">{state.productName}</dd>
           </div>
+          {state.productId && <div className="flex flex-col gap-1 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+            <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#747783]">Product ID</dt>
+            <dd className="break-all text-sm font-semibold sm:text-right">{state.productId}</dd>
+          </div>}
           <div className="flex flex-col gap-1 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
             <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#747783]">Order ID</dt>
             <dd className="break-all text-sm font-semibold sm:text-right">{state.orderId}</dd>
@@ -109,6 +115,7 @@ export default function PurchaseSuccessPage() {
             </div>
           )}
           {state.paymentId && <p className="mt-3 break-all text-xs text-[#747783]">Payment ID: {state.paymentId}</p>}
+          {state.emailSent && <p className="mt-2 text-xs text-emerald-700">A confirmation email with your product details has been sent.</p>}
           <p className="mt-4 text-xs leading-relaxed text-[#747783]">Your access is protected and linked to this paid order.</p>
         </div>
       </section>

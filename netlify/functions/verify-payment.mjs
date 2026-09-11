@@ -56,7 +56,7 @@ const signatureMatches = (secret, razorpayOrderId, razorpayPaymentId, signature)
 const getStoredOrder = async (config, orderId) => {
   const query = new URLSearchParams({
     id: `eq.${orderId}`,
-    select: 'id,status,product_id,product_name,product_price,product_currency,customer_id,razorpay_order_id,razorpay_payment_id',
+    select: 'id,status,product_id,product_name,product_price,product_currency,product_storage_path,product_delivery_type,customer_id,razorpay_order_id,razorpay_payment_id',
     limit: '1',
   });
   const response = await fetch(`${config.supabaseUrl}/rest/v1/orders?${query}`, {
@@ -90,10 +90,9 @@ const getRazorpayResource = async (config, path) => {
   return response.json();
 };
 
-const getProduct = async (config, productId) => {
+const getProduct = async (config, order) => {
   const query = new URLSearchParams({
-    id: `eq.${productId}`,
-    active: 'eq.true',
+    id: `eq.${order.product_id}`,
     select: 'id,delivery_type,storage_path',
     limit: '1',
   });
@@ -102,7 +101,13 @@ const getProduct = async (config, productId) => {
   });
   if (!response.ok) throw new Error(`Product lookup failed with status ${response.status}`);
   const products = await response.json();
-  return products[0] || null;
+  const currentProduct = products[0];
+  if (!currentProduct && !order.product_storage_path) return null;
+  return {
+    id: order.product_id,
+    storage_path: order.product_storage_path || currentProduct?.storage_path,
+    delivery_type: order.product_delivery_type || currentProduct?.delivery_type || 'pdf',
+  };
 };
 
 const createAccessToken = (secret, orderId, productId) => createHmac('sha256', secret)
@@ -118,7 +123,15 @@ const escapeHtml = (value) => String(value ?? '')
   .replace(/"/g, '&quot;')
   .replace(/'/g, '&#039;');
 
-const sendPurchaseConfirmation = async (request, config, order, customer, accessToken, paymentId) => {
+const getDeliveryLabel = (deliveryType) => {
+  if (deliveryType === 'course') return 'Course access';
+  if (deliveryType === 'video') return 'Video access';
+  return 'Digital download';
+};
+
+const formatAmount = (order) => `${order.product_currency || 'INR'} ${Number(order.product_price || 0).toFixed(2)}`;
+
+const sendPurchaseConfirmation = async (request, config, order, customer, product, accessToken, paymentId) => {
   if (!config.resendApiKey || !config.emailFrom || !config.supportEmail || !customer?.email) {
     return { sent: false, skipped: true };
   }
@@ -127,35 +140,58 @@ const sendPurchaseConfirmation = async (request, config, order, customer, access
   const accessUrl = `${appUrl}/api/access?token=${encodeURIComponent(accessToken)}`;
   const customerName = customer.full_name || 'there';
   const productName = order.product_name || 'your purchase';
+  const productId = order.product_id;
+  const deliveryLabel = getDeliveryLabel(product?.delivery_type);
   const orderId = order.id;
   const supportEmail = config.supportEmail;
   const escapedAccessUrl = escapeHtml(accessUrl);
   const escapedCustomerName = escapeHtml(customerName);
   const escapedProductName = escapeHtml(productName);
+  const escapedProductId = escapeHtml(productId);
   const escapedOrderId = escapeHtml(orderId);
+  const escapedPaymentId = escapeHtml(paymentId || order.razorpay_payment_id || '-');
+  const escapedDeliveryLabel = escapeHtml(deliveryLabel);
+  const escapedAmount = escapeHtml(formatAmount(order));
   const escapedSupportEmail = escapeHtml(supportEmail);
+  const actionLabel = product?.delivery_type === 'pdf' || !product?.delivery_type
+    ? 'Download Your Product'
+    : 'Access Your Product';
+  const escapedActionLabel = escapeHtml(actionLabel);
 
   const html = `<!doctype html>
 <html lang="en">
   <body style="margin:0;background:#f5f4ef;color:#12141a;font-family:Arial,Helvetica,sans-serif;line-height:1.5;">
     <div style="max-width:600px;margin:0 auto;padding:32px 16px;">
-      <div style="background:#ffffff;border:1px solid #e3e0d8;border-radius:16px;padding:32px 24px;">
-        <p style="margin:0 0 12px;color:#9e825d;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;">Purchase confirmed</p>
-        <h1 style="margin:0 0 16px;font-size:28px;line-height:1.2;">Thank you, ${escapedCustomerName}.</h1>
-        <p style="margin:0 0 24px;color:#4a4d57;">Your payment was verified successfully and your order is confirmed.</p>
-        <div style="border:1px solid #e3e0d8;border-radius:10px;background:#faf8f5;padding:16px;margin-bottom:24px;">
-          <p style="margin:0 0 8px;"><strong>Product:</strong> ${escapedProductName}</p>
-          <p style="margin:0;"><strong>Order ID:</strong> ${escapedOrderId}</p>
+      <div style="background:#ffffff;border:1px solid #e3e0d8;border-radius:16px;overflow:hidden;">
+        <div style="background:#12141a;padding:24px;color:#ffffff;">
+          <p style="margin:0;color:#c5a880;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;">Ar. Ahmed Usmani</p>
+          <h1 style="margin:8px 0 0;font-size:26px;line-height:1.2;">Welcome to your purchase, ${escapedCustomerName}.</h1>
         </div>
-        <p style="margin:0 0 24px;text-align:center;">
-          <a href="${escapedAccessUrl}" style="display:inline-block;background:#12141a;border-radius:8px;color:#ffffff;padding:13px 20px;text-decoration:none;font-size:13px;font-weight:700;letter-spacing:1px;">Access Your Product</a>
-        </p>
-        <p style="margin:0;color:#747783;font-size:13px;">Need help? Contact <a href="mailto:${escapedSupportEmail}" style="color:#9e825d;">${escapedSupportEmail}</a>.</p>
+        <div style="padding:28px 24px;">
+          <p style="margin:0 0 20px;color:#4a4d57;">Thank you for buying from us. Your payment has been verified and your ${escapedDeliveryLabel.toLowerCase()} is ready.</p>
+          <div style="border:1px solid #e3e0d8;border-radius:10px;background:#faf8f5;padding:16px;margin-bottom:24px;">
+            <p style="margin:0 0 10px;"><strong>Product:</strong> ${escapedProductName}</p>
+            <p style="margin:0 0 10px;"><strong>Product ID:</strong> ${escapedProductId}</p>
+            <p style="margin:0 0 10px;"><strong>Order ID:</strong> ${escapedOrderId}</p>
+            <p style="margin:0 0 10px;"><strong>Payment ID:</strong> ${escapedPaymentId}</p>
+            <p style="margin:0 0 10px;"><strong>Amount:</strong> ${escapedAmount}</p>
+            <p style="margin:0;"><strong>Delivery:</strong> ${escapedDeliveryLabel}</p>
+          </div>
+          <p style="margin:0 0 24px;text-align:center;">
+            <a href="${escapedAccessUrl}" style="display:inline-block;background:#12141a;border-radius:8px;color:#ffffff;padding:13px 20px;text-decoration:none;font-size:13px;font-weight:700;letter-spacing:1px;">${escapedActionLabel}</a>
+          </p>
+          <p style="margin:0 0 24px;color:#747783;font-size:13px;">Keep this email for your records. This private access link is connected to your paid order.</p>
+          <div style="border-top:1px solid #e3e0d8;padding-top:18px;">
+            <p style="margin:0;color:#12141a;font-weight:700;">Ar. Ahmed Usmani</p>
+            <p style="margin:3px 0 0;color:#4a4d57;font-size:13px;">Architecture, BIM, AI Design Workflows & Digital Learning Products</p>
+            <p style="margin:10px 0 0;color:#747783;font-size:13px;">Support: <a href="mailto:${escapedSupportEmail}" style="color:#9e825d;">${escapedSupportEmail}</a></p>
+          </div>
+        </div>
       </div>
     </div>
   </body>
 </html>`;
-  const text = `Purchase confirmed\n\nThank you, ${customerName}.\n\nProduct: ${productName}\nOrder ID: ${orderId}\n\nAccess Your Product: ${accessUrl}\n\nNeed help? Contact ${supportEmail}.`;
+  const text = `Welcome to your purchase\n\nThank you, ${customerName}.\n\nYour payment has been verified.\n\nProduct: ${productName}\nProduct ID: ${productId}\nOrder ID: ${orderId}\nPayment ID: ${paymentId || order.razorpay_payment_id || '-'}\nAmount: ${formatAmount(order)}\nDelivery: ${deliveryLabel}\n\n${actionLabel}: ${accessUrl}\n\nAr. Ahmed Usmani\nArchitecture, BIM, AI Design Workflows & Digital Learning Products\nSupport: ${supportEmail}.`;
 
   try {
     const response = await fetch('https://api.resend.com/emails', {
@@ -169,7 +205,7 @@ const sendPurchaseConfirmation = async (request, config, order, customer, access
         from: config.emailFrom,
         to: [customer.email],
         reply_to: supportEmail,
-        subject: `Purchase confirmed: ${productName}`,
+        subject: `Welcome: your ${productName} purchase is ready`,
         html,
         text,
       }),
@@ -187,10 +223,10 @@ const sendPurchaseConfirmation = async (request, config, order, customer, access
   }
 };
 
-const sendPurchaseConfirmationForOrder = async (request, config, order, accessToken, paymentId) => {
+const sendPurchaseConfirmationForOrder = async (request, config, order, product, accessToken, paymentId) => {
   try {
     const customer = await getCustomer(config, order.customer_id);
-    return sendPurchaseConfirmation(request, config, order, customer, accessToken, paymentId);
+    return sendPurchaseConfirmation(request, config, order, customer, product, accessToken, paymentId);
   } catch (error) {
     console.error('Purchase confirmation customer lookup failed:', error);
     return { sent: false };
@@ -258,7 +294,7 @@ export default async (request) => {
   const accessTokenHash = hashAccessToken(accessToken);
   let product;
   try {
-    product = await getProduct(config, storedOrder.product_id);
+    product = await getProduct(config, storedOrder);
   } catch (error) {
     console.error('Product fulfillment lookup failed:', error);
     return jsonResponse({ error: 'The purchased product could not be prepared for access.' }, 502);
@@ -283,7 +319,7 @@ export default async (request) => {
       if (!ensured.response.ok) {
         return jsonResponse({ error: 'Payment was already verified but product access could not be prepared.' }, 409);
       }
-      const email = await sendPurchaseConfirmationForOrder(request, config, storedOrder, accessToken, payload.razorpayPaymentId);
+      const email = await sendPurchaseConfirmationForOrder(request, config, storedOrder, product, accessToken, payload.razorpayPaymentId);
       return jsonResponse({
         verified: true,
         alreadyProcessed: true,
@@ -291,6 +327,7 @@ export default async (request) => {
         status: 'PAID',
         paymentId: payload.razorpayPaymentId,
         productName: storedOrder.product_name,
+        productId: storedOrder.product_id,
         accessUrl: `/api/access?token=${encodeURIComponent(accessToken)}`,
         deliveryType: product.delivery_type || 'pdf',
         emailSent: email.sent,
@@ -345,7 +382,7 @@ export default async (request) => {
     return jsonResponse({ error: 'Payment was verified but the order could not be updated.' }, 409);
   }
 
-  const email = await sendPurchaseConfirmationForOrder(request, config, storedOrder, accessToken, payload.razorpayPaymentId);
+  const email = await sendPurchaseConfirmationForOrder(request, config, storedOrder, product, accessToken, payload.razorpayPaymentId);
 
   return jsonResponse({
     verified: true,
@@ -354,6 +391,7 @@ export default async (request) => {
     status: 'PAID',
     paymentId: payload.razorpayPaymentId,
     productName: storedOrder.product_name,
+    productId: storedOrder.product_id,
     accessUrl: `/api/access?token=${encodeURIComponent(accessToken)}`,
     deliveryType: product.delivery_type || 'pdf',
     emailSent: email.sent,

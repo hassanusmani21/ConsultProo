@@ -65,8 +65,6 @@ const loadRazorpayScript = () => new Promise<void>((resolve, reject) => {
   document.body.appendChild(script);
 });
 
-const configuredRazorpayKeyId = import.meta.env.VITE_RAZORPAY_KEY_ID;
-
 const normalizeInternationalPhone = (value: string, dialCode: string) => {
   let phone = value.trim().replace(/[()\s.-]/g, '');
   const dialDigits = dialCode.replace(/\D/g, '');
@@ -231,10 +229,12 @@ export default function CheckoutPage() {
           orderId: details.orderId,
           customerName: form.fullName.trim(),
           productName: result.productName || productDetails?.title || 'Purchased product',
+          productId: result.productId || productDetails?.id,
           accessUrl: result.accessUrl,
           deliveryType: result.deliveryType || 'pdf',
           localMode: Boolean(result.localMode),
           paymentId: result.paymentId,
+          emailSent: Boolean(result.emailSent),
         },
       });
     } catch (error) {
@@ -258,7 +258,8 @@ export default function CheckoutPage() {
       let paymentFailureReceived = false;
 
       const checkout = new Razorpay({
-        key: configuredRazorpayKeyId || details.keyId,
+        // The server-created order and this key must belong to the same Razorpay account.
+        key: details.keyId,
         amount: details.amount,
         currency: details.currency,
         name: 'Ar. Ahmed Usmani',

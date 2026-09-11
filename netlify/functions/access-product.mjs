@@ -39,7 +39,7 @@ const getAccessRecord = async (config, tokenHash) => {
 const getOrder = async (config, orderId) => {
   const query = new URLSearchParams({
     id: `eq.${orderId}`,
-    select: 'id,status,customer_id,product_id',
+    select: 'id,status,customer_id,product_id,product_storage_path,product_delivery_type',
     limit: '1',
   });
   const response = await fetch(`${config.supabaseUrl}/rest/v1/orders?${query}`, {
@@ -50,10 +50,9 @@ const getOrder = async (config, orderId) => {
   return orders[0] || null;
 };
 
-const getProduct = async (config, productId) => {
+const getProduct = async (config, order) => {
   const query = new URLSearchParams({
-    id: `eq.${productId}`,
-    active: 'eq.true',
+    id: `eq.${order.product_id}`,
     select: 'id,storage_path,delivery_type',
     limit: '1',
   });
@@ -62,7 +61,13 @@ const getProduct = async (config, productId) => {
   });
   if (!response.ok) throw new Error(`Product lookup failed with status ${response.status}`);
   const products = await response.json();
-  return products[0] || null;
+  const currentProduct = products[0];
+  if (!currentProduct && !order.product_storage_path) return null;
+  return {
+    id: order.product_id,
+    storage_path: order.product_storage_path || currentProduct?.storage_path,
+    delivery_type: order.product_delivery_type || currentProduct?.delivery_type || 'pdf',
+  };
 };
 
 const updateLastAccessed = async (config, accessId) => {
@@ -113,7 +118,7 @@ export default async (request) => {
       return jsonResponse({ error: 'This product is not available through this access link.' }, 403);
     }
 
-    const product = await getProduct(config, access.product_id);
+    const product = await getProduct(config, order);
     if (!product?.storage_path) return jsonResponse({ error: 'The purchased file is not available yet.' }, 404);
 
     const signedUrl = await getSignedUrl(config, product.storage_path);

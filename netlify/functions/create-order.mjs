@@ -4,6 +4,7 @@ import { parsePhoneNumberFromString } from 'libphonenumber-js/min';
 
 const allowedCurrencies = new Set(['INR']);
 const minimumAmountPaise = 100;
+const dependencyTimeoutMs = 8000;
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i;
 
 const responseHeaders = {
@@ -93,6 +94,25 @@ const supabaseHeaders = (serviceRoleKey) => ({
   'Content-Type': 'application/json',
 });
 
+const fetchWithTimeout = async (url, options, dependency) => {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), dependencyTimeoutMs);
+
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      const timeoutError = new Error(`${dependency} timed out after ${dependencyTimeoutMs}ms.`);
+      timeoutError.code = 'DEPENDENCY_TIMEOUT';
+      timeoutError.dependency = dependency;
+      throw timeoutError;
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+};
+
 const getProduct = async (supabaseUrl, serviceRoleKey, productId) => {
   const query = new URLSearchParams({
     id: `eq.${productId}`,
@@ -100,9 +120,9 @@ const getProduct = async (supabaseUrl, serviceRoleKey, productId) => {
     select: 'id,name,price,currency',
     limit: '1',
   });
-  const response = await fetch(`${supabaseUrl}/rest/v1/products?${query}`, {
+  const response = await fetchWithTimeout(`${supabaseUrl}/rest/v1/products?${query}`, {
     headers: supabaseHeaders(serviceRoleKey),
-  });
+  }, 'Supabase product lookup');
 
   if (!response.ok) throw new Error(`Product lookup failed with status ${response.status}`);
   const products = await response.json();
@@ -115,9 +135,9 @@ const getExistingOrder = async (supabaseUrl, serviceRoleKey, idempotencyKey) => 
     select: 'id,status,razorpay_order_id',
     limit: '1',
   });
-  const response = await fetch(`${supabaseUrl}/rest/v1/orders?${query}`, {
+  const response = await fetchWithTimeout(`${supabaseUrl}/rest/v1/orders?${query}`, {
     headers: supabaseHeaders(serviceRoleKey),
-  });
+  }, 'Supabase existing-order lookup');
   if (!response.ok) throw new Error(`Existing order lookup failed with status ${response.status}`);
   const orders = await response.json();
   return orders[0] || null;
@@ -129,14 +149,14 @@ const createRazorpayOrder = async ({ keyId, keySecret, amount, currency, receipt
   if (productId || internalOrderId) {
     orderPayload.notes = { product_id: productId, internal_order_id: internalOrderId };
   }
-  const response = await fetch('https://api.razorpay.com/v1/orders', {
+  const response = await fetchWithTimeout('https://api.razorpay.com/v1/orders', {
     method: 'POST',
     headers: {
       Authorization: `Basic ${auth}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(orderPayload),
-  });
+  }, 'Razorpay order creation');
 
   if (!response.ok) {
     const error = new Error(`Razorpay order creation failed with status ${response.status}`);
@@ -204,6 +224,9 @@ export default async (request) => {
     product = await getProduct(config.supabaseUrl, config.supabaseServiceRoleKey, validated.productId);
   } catch (error) {
     console.error(error);
+    if (error?.code === 'DEPENDENCY_TIMEOUT') {
+      return jsonResponse({ error: 'Supabase did not respond while checking the product. Check SUPABASE_URL and try again.' }, 504);
+    }
     return jsonResponse({ error: 'The product price could not be verified.' }, 502);
   }
 
@@ -232,6 +255,9 @@ export default async (request) => {
     );
   } catch (error) {
     console.error('Existing order lookup failed:', error);
+    if (error?.code === 'DEPENDENCY_TIMEOUT') {
+      return jsonResponse({ error: 'Supabase did not respond while checking the order. Check SUPABASE_URL and try again.' }, 504);
+    }
     return jsonResponse({ error: 'The order could not be checked. Please try again.' }, 502);
   }
 
@@ -267,6 +293,9 @@ export default async (request) => {
     });
   } catch (error) {
     console.error('Razorpay request failed:', error);
+    if (error?.code === 'DEPENDENCY_TIMEOUT') {
+      return jsonResponse({ error: 'Razorpay did not respond while creating the payment order. Please try again.' }, 504);
+    }
     if (error?.status === 401) return jsonResponse({ error: 'Payment service authentication failed.' }, 401);
     return jsonResponse({ error: 'Payment order creation failed.' }, 500);
   }
@@ -277,7 +306,7 @@ export default async (request) => {
 
   let databaseResponse;
   try {
-    databaseResponse = await fetch(`${config.supabaseUrl}/rest/v1/rpc/create_pending_order`, {
+    databaseResponse = await fetchWithTimeout(`${config.supabaseUrl}/rest/v1/rpc/create_pending_order`, {
       method: 'POST',
       headers: supabaseHeaders(config.supabaseServiceRoleKey),
       body: JSON.stringify({
@@ -291,9 +320,12 @@ export default async (request) => {
         p_razorpay_order_id: razorpayOrder.id,
         p_client_order_id: validated.idempotencyKey,
       }),
-    });
+    }, 'Supabase pending-order save');
   } catch (error) {
     console.error('Order database request failed after Razorpay order creation:', error);
+    if (error?.code === 'DEPENDENCY_TIMEOUT') {
+      return jsonResponse({ error: 'Supabase did not respond while saving the order. Check SUPABASE_URL and try again.' }, 504);
+    }
     return jsonResponse({ error: 'The order could not be saved. Please try again.' }, 502);
   }
 

@@ -1,5 +1,4 @@
 import verifyPayment from '../netlify/functions/verify-payment.mjs';
+import { createVercelHandler } from '../lib/vercel-handler.mjs';
 
-export const fetch = verifyPayment;
-export const POST = verifyPayment;
-export default verifyPayment;
+export default createVercelHandler(verifyPayment);

@@ -1,5 +1,4 @@
 import accessProduct from '../netlify/functions/access-product.mjs';
+import { createVercelHandler } from '../lib/vercel-handler.mjs';
 
-export const fetch = accessProduct;
-export const GET = accessProduct;
-export default accessProduct;
+export default createVercelHandler(accessProduct);

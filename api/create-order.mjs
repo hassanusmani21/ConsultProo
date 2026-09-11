@@ -1,5 +1,4 @@
 import createOrder from '../netlify/functions/create-order.mjs';
+import { createVercelHandler } from '../lib/vercel-handler.mjs';
 
-export const fetch = createOrder;
-export const POST = createOrder;
-export default createOrder;
+export default createVercelHandler(createOrder);

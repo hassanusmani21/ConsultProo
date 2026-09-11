@@ -18,7 +18,8 @@ import {
   Package,
   Star,
   Layers,
-  ShieldCheck
+  ShieldCheck,
+  ReceiptText
 } from 'lucide-react';
 
 export default function AdminLayout() {
@@ -29,6 +30,7 @@ export default function AdminLayout() {
   const navItems = [
     { label: 'Dashboard', path: '/admin', icon: LayoutDashboard },
     { label: 'Profile', path: '/admin/profile', icon: UserCircle },
+    { label: 'Purchases', path: '/admin/purchases', icon: ReceiptText },
     { label: 'Projects', path: '/admin/projects', icon: FolderKanban },
     { label: 'Interiors', path: '/admin/interiors', icon: Sofa },
     { label: 'Ebooks', path: '/admin/ebooks', icon: BookOpen },

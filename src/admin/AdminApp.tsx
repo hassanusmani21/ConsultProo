@@ -10,6 +10,7 @@ import MasterclassPage from './pages/MasterclassPage';
 import LoginPage from './pages/LoginPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import SecurityPage from './pages/SecurityPage';
+import PurchasesPage from './pages/PurchasesPage';
 
 function ProtectedAdmin() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -35,6 +36,7 @@ export default function AdminApp() {
       <Route path="/" element={<ProtectedAdmin />}>
         <Route index element={<Dashboard />} />
         <Route path="profile" element={<ProfilePage />} />
+        <Route path="purchases" element={<PurchasesPage />} />
         <Route path="sections" element={<SectionsPage />} />
         <Route path="projects" element={<CrudPage collection="projects" />} />
         <Route path="interiors" element={<CrudPage collection="interiors" />} />

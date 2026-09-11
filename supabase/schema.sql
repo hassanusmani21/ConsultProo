@@ -37,9 +37,20 @@ create table if not exists public.customers (
   id uuid primary key default gen_random_uuid(),
   full_name text not null check (char_length(trim(full_name)) between 2 and 100),
   email text not null check (char_length(email) between 3 and 254),
-  phone text not null check (char_length(phone) between 10 and 15),
+  country_code text not null default 'IN' check (char_length(trim(country_code)) between 2 and 16),
+  country text not null default 'India' check (char_length(trim(country)) between 2 and 100),
+  phone text not null check (char_length(phone) between 8 and 20),
   created_at timestamptz not null default now()
 );
+
+alter table public.customers add column if not exists country_code text not null default 'IN';
+alter table public.customers add column if not exists country text not null default 'India';
+alter table public.customers drop constraint if exists customers_phone_check;
+alter table public.customers add constraint customers_phone_check check (char_length(phone) between 8 and 20);
+alter table public.customers drop constraint if exists customers_country_code_check;
+alter table public.customers add constraint customers_country_code_check check (char_length(trim(country_code)) between 2 and 16);
+alter table public.customers drop constraint if exists customers_country_check;
+alter table public.customers add constraint customers_country_check check (char_length(trim(country)) between 2 and 100);
 
 create table if not exists public.orders (
   id uuid primary key,
@@ -95,12 +106,15 @@ on conflict (id) do update set public = false;
 drop function if exists public.create_pending_order(uuid, text, text, text, text, text, numeric, text);
 drop function if exists public.create_pending_order(uuid, text, text, text, text, text);
 drop function if exists public.create_pending_order(uuid, text, text, text, text, text, text);
+drop function if exists public.create_pending_order(uuid, text, text, text, text, text, text, text, text);
 
 create or replace function public.create_pending_order(
   p_order_id uuid,
   p_customer_full_name text,
   p_customer_email text,
   p_customer_phone text,
+  p_customer_country_code text,
+  p_customer_country text,
   p_product_id text,
   p_razorpay_order_id text,
   p_client_order_id text
@@ -135,8 +149,14 @@ begin
     raise exception 'PRODUCT_NOT_AVAILABLE';
   end if;
 
-  insert into public.customers (full_name, email, phone)
-  values (trim(p_customer_full_name), lower(trim(p_customer_email)), trim(p_customer_phone))
+  insert into public.customers (full_name, email, phone, country_code, country)
+  values (
+    trim(p_customer_full_name),
+    lower(trim(p_customer_email)),
+    trim(p_customer_phone),
+    upper(trim(p_customer_country_code)),
+    trim(p_customer_country)
+  )
   returning id into customer_ref;
 
   insert into public.orders (
@@ -168,8 +188,8 @@ begin
 end;
 $$;
 
-revoke all on function public.create_pending_order(uuid, text, text, text, text, text, text) from public;
-grant execute on function public.create_pending_order(uuid, text, text, text, text, text, text) to service_role;
+revoke all on function public.create_pending_order(uuid, text, text, text, text, text, text, text, text) from public;
+grant execute on function public.create_pending_order(uuid, text, text, text, text, text, text, text, text) to service_role;
 
 drop function if exists public.mark_order_paid(uuid, text, text, bigint, text);
 
@@ -343,6 +363,24 @@ on public.products for all
 to authenticated
 using (public.is_admin())
 with check (public.is_admin());
+
+drop policy if exists "Admins can read customers" on public.customers;
+create policy "Admins can read customers"
+on public.customers for select
+to authenticated
+using (public.is_admin());
+
+drop policy if exists "Admins can read orders" on public.orders;
+create policy "Admins can read orders"
+on public.orders for select
+to authenticated
+using (public.is_admin());
+
+drop policy if exists "Admins can read product access" on public.product_access;
+create policy "Admins can read product access"
+on public.product_access for select
+to authenticated
+using (public.is_admin());
 
 insert into storage.buckets (id, name, public)
 values ('cms-assets', 'cms-assets', true)

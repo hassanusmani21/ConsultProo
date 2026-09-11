@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { Buffer } from 'node:buffer';
+import { parsePhoneNumberFromString } from 'libphonenumber-js/min';
 
 const allowedCurrencies = new Set(['INR']);
 const minimumAmountPaise = 100;
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i;
-const indianMobilePattern = /^(?:\+91|91|0)?[6-9]\d{9}$/;
 
 const responseHeaders = {
   'Content-Type': 'application/json',
@@ -17,6 +17,32 @@ const jsonResponse = (body, status = 200) => new Response(JSON.stringify(body), 
 });
 
 const normalizeText = (value) => typeof value === 'string' ? value.trim() : '';
+const normalizeDialCode = (value) => {
+  const dialCode = normalizeText(value).replace(/[^\d+]/g, '');
+  if (!dialCode) return '';
+  return dialCode.startsWith('+') ? dialCode : `+${dialCode}`;
+};
+
+const normalizeInternationalPhone = (value, dialCode = '') => {
+  let phone = normalizeText(value).replace(/[()\s.-]/g, '');
+  const dialDigits = dialCode.replace(/\D/g, '');
+  if (phone.startsWith('00')) phone = `+${phone.slice(2)}`;
+  if (!phone.startsWith('+') && dialCode) {
+    phone = phone.startsWith(dialDigits) ? `+${phone}` : `${dialCode}${phone.replace(/^0+/, '')}`;
+  }
+  return phone;
+};
+
+const validatePhoneForCountry = (value, countryCode, dialCode) => {
+  const normalizedInput = normalizeInternationalPhone(value, dialCode);
+  const phoneNumber = countryCode === 'OTHER'
+    ? parsePhoneNumberFromString(normalizedInput)
+    : parsePhoneNumberFromString(normalizedInput, countryCode);
+
+  if (!phoneNumber?.isValid()) return null;
+  if (countryCode !== 'OTHER' && phoneNumber.country && phoneNumber.country !== countryCode) return null;
+  return phoneNumber.number;
+};
 
 const validateGenericOrder = (payload) => {
   const amount = Number(payload?.amount);
@@ -38,15 +64,20 @@ const validateRequest = (payload) => {
   const idempotencyKey = normalizeText(payload?.idempotencyKey || payload?.idempotency_key);
   const fullName = normalizeText(customer?.fullName);
   const email = normalizeText(customer?.email).toLowerCase();
-  const mobile = normalizeText(customer?.mobile).replace(/[\s-]/g, '');
+  const countryCode = normalizeText(customer?.countryCode || customer?.country_code || 'OTHER').toUpperCase();
+  const country = normalizeText(customer?.country || customer?.countryName || 'Other country / region');
+  const dialCode = normalizeDialCode(customer?.dialCode || customer?.dial_code);
+  const mobile = validatePhoneForCountry(customer?.mobile, countryCode, dialCode);
 
   if (fullName.length < 2 || fullName.length > 100) return { error: 'A valid full name is required.' };
   if (email.length > 254 || !emailPattern.test(email)) return { error: 'A valid email address is required.' };
-  if (!indianMobilePattern.test(mobile)) return { error: 'A valid Indian mobile number is required.' };
+  if (!/^(?:[A-Z]{2}|OTHER)$/.test(countryCode)) return { error: 'A valid country is required.' };
+  if (country.length < 2 || country.length > 100) return { error: 'A valid country is required.' };
+  if (!mobile) return { error: `A valid mobile number for ${country} is required.` };
   if (!productId || productId.length > 120) return { error: 'A valid product is required.' };
   if (!idempotencyKey || idempotencyKey.length > 100) return { error: 'A valid checkout idempotency key is required.' };
 
-  return { customer: { fullName, email, mobile }, productId, idempotencyKey };
+  return { customer: { fullName, email, countryCode, country, dialCode, mobile }, productId, idempotencyKey };
 };
 
 const getConfig = () => ({
@@ -254,6 +285,8 @@ export default async (request) => {
         p_customer_full_name: validated.customer.fullName,
         p_customer_email: validated.customer.email,
         p_customer_phone: validated.customer.mobile,
+        p_customer_country_code: validated.customer.countryCode,
+        p_customer_country: validated.customer.country,
         p_product_id: product.id,
         p_razorpay_order_id: razorpayOrder.id,
         p_client_order_id: validated.idempotencyKey,

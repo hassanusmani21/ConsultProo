@@ -1,12 +1,27 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useData } from '../../data/DataContext';
 import { Link } from 'react-router-dom';
-import { FolderKanban, Sofa, BookOpen, Home, Wand2, Video } from 'lucide-react';
+import { FolderKanban, Sofa, BookOpen, Home, Wand2, Video, ReceiptText } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 
 export default function Dashboard() {
   const { data } = useData();
+  const [purchaseCount, setPurchaseCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    const loadPurchaseCount = async () => {
+      if (!supabase) return;
+      const { count } = await supabase
+        .from('orders')
+        .select('*', { count: 'exact', head: true });
+      setPurchaseCount(count ?? 0);
+    };
+
+    void loadPurchaseCount();
+  }, []);
 
   const stats = [
+    { label: 'Purchases', count: purchaseCount ?? 0, icon: ReceiptText, link: '/admin/purchases' },
     { label: 'Architecture Projects', count: data.projects.length, icon: FolderKanban, link: '/admin/projects' },
     { label: 'Interior Projects', count: data.interiors.length, icon: Sofa, link: '/admin/interiors' },
     { label: 'Ebooks', count: data.ebooks.length, icon: BookOpen, link: '/admin/ebooks' },

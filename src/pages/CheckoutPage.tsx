@@ -1,12 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, CheckCircle2, CreditCard, Mail, Phone, User } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, CreditCard, Globe2, Mail, Phone, User } from 'lucide-react';
+import { parsePhoneNumberFromString, type CountryCode } from 'libphonenumber-js/min/es6';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useData } from '../data/DataContext';
 import { PriceDisplay } from '../components/PriceDisplay';
+import { countryOptions, defaultCountryCode, getCountryByCode } from '../data/countryOptions';
 
 interface CheckoutForm {
   fullName: string;
   email: string;
+  countryCode: string;
   mobile: string;
 }
 
@@ -64,11 +67,32 @@ const loadRazorpayScript = () => new Promise<void>((resolve, reject) => {
 
 const configuredRazorpayKeyId = import.meta.env.VITE_RAZORPAY_KEY_ID;
 
+const normalizeInternationalPhone = (value: string, dialCode: string) => {
+  let phone = value.trim().replace(/[()\s.-]/g, '');
+  const dialDigits = dialCode.replace(/\D/g, '');
+  if (phone.startsWith('00')) phone = `+${phone.slice(2)}`;
+  if (!phone.startsWith('+') && dialCode) {
+    phone = phone.startsWith(dialDigits) ? `+${phone}` : `${dialCode}${phone.replace(/^0+/, '')}`;
+  }
+  return phone;
+};
+
+const validatePhoneForCountry = (value: string, countryCode: string, dialCode: string) => {
+  const normalizedInput = normalizeInternationalPhone(value, dialCode);
+  const phoneNumber = countryCode === 'OTHER'
+    ? parsePhoneNumberFromString(normalizedInput)
+    : parsePhoneNumberFromString(normalizedInput, countryCode as CountryCode);
+
+  if (!phoneNumber?.isValid()) return null;
+  if (countryCode !== 'OTHER' && phoneNumber.country && phoneNumber.country !== countryCode) return null;
+  return phoneNumber.number;
+};
+
 export default function CheckoutPage() {
   const navigate = useNavigate();
   const { collection, productId } = useParams<{ collection: string; productId: string }>();
   const { data } = useData();
-  const [form, setForm] = useState<CheckoutForm>({ fullName: '', email: '', mobile: '' });
+  const [form, setForm] = useState<CheckoutForm>({ fullName: '', email: '', countryCode: defaultCountryCode, mobile: '' });
   const [errors, setErrors] = useState<CheckoutErrors>({});
   const [isValidated, setIsValidated] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -96,7 +120,12 @@ export default function CheckoutPage() {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed?.form && parsed?.paymentOrder) {
-          setForm(parsed.form);
+          setForm({
+            fullName: parsed.form.fullName || '',
+            email: parsed.form.email || '',
+            countryCode: parsed.form.countryCode || defaultCountryCode,
+            mobile: parsed.form.mobile || '',
+          });
           setPaymentOrder(parsed.paymentOrder);
           setOrderStatus('PENDING_PAYMENT');
           checkoutAttemptIdRef.current = parsed.checkoutAttemptId || null;
@@ -134,6 +163,8 @@ export default function CheckoutPage() {
   }, [collection, data, productId]);
 
   const productDetails = getProductDetails(product);
+  const selectedCountry = getCountryByCode(form.countryCode);
+  const normalizedMobile = validatePhoneForCountry(form.mobile, selectedCountry.code, selectedCountry.dialCode) || normalizeInternationalPhone(form.mobile, selectedCountry.dialCode);
 
   const updateField = (field: keyof CheckoutForm, value: string) => {
     setForm((current) => ({ ...current, [field]: value }));
@@ -149,7 +180,6 @@ export default function CheckoutPage() {
 
   const validateForm = () => {
     const nextErrors: CheckoutErrors = {};
-    const normalizedMobile = form.mobile.replace(/[\s-]/g, '');
 
     if (!form.fullName.trim()) nextErrors.fullName = 'Full name is required.';
     if (!form.email.trim()) {
@@ -157,10 +187,13 @@ export default function CheckoutPage() {
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i.test(form.email.trim())) {
       nextErrors.email = 'Enter a valid email address.';
     }
+    if (!form.countryCode.trim()) nextErrors.countryCode = 'Country is required.';
     if (!form.mobile.trim()) {
       nextErrors.mobile = 'Mobile number is required.';
-    } else if (!/^(?:\+91|91|0)?[6-9]\d{9}$/.test(normalizedMobile)) {
-      nextErrors.mobile = 'Enter a valid Indian mobile number.';
+    } else if (!validatePhoneForCountry(form.mobile, selectedCountry.code, selectedCountry.dialCode)) {
+      nextErrors.mobile = selectedCountry.dialCode
+        ? `Enter a valid mobile number for ${selectedCountry.name}.`
+        : 'Enter a valid international number starting with + and the country code.';
     }
 
     setErrors(nextErrors);
@@ -234,7 +267,7 @@ export default function CheckoutPage() {
         prefill: {
           name: form.fullName,
           email: form.email,
-          contact: form.mobile,
+          contact: normalizedMobile,
         },
         notes: { internalOrderId: details.orderId },
         theme: { color: '#bfa37c' },
@@ -296,7 +329,10 @@ export default function CheckoutPage() {
           customer: {
             fullName: form.fullName,
             email: form.email,
-            mobile: form.mobile,
+            countryCode: selectedCountry.code,
+            country: selectedCountry.name,
+            dialCode: selectedCountry.dialCode,
+            mobile: normalizedMobile,
           },
           product: { id: productDetails.id },
         }),
@@ -390,8 +426,22 @@ export default function CheckoutPage() {
                 {errors.email && <p className="mt-1.5 text-xs text-red-600">{errors.email}</p>}
               </div>
               <div>
+                <label htmlFor="checkout-country" className="mb-2 block text-xs font-bold uppercase tracking-wider text-[#747783]">Country</label>
+                <div className="relative">
+                  <Globe2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9e825d]" />
+                  <select id="checkout-country" value={form.countryCode} onChange={(event) => updateField('countryCode', event.target.value)} aria-invalid={Boolean(errors.countryCode)} className="w-full appearance-none rounded-lg border border-[#12141a]/15 bg-[#faf8f5] py-3 pl-10 pr-4 text-sm outline-none transition-colors focus:border-[#9e825d] aria-[invalid=true]:border-red-500">
+                    {countryOptions.map((country) => (
+                      <option key={country.code} value={country.code}>
+                        {country.name}{country.dialCode ? ` (${country.dialCode})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {errors.countryCode && <p className="mt-1.5 text-xs text-red-600">{errors.countryCode}</p>}
+              </div>
+              <div>
                 <label htmlFor="checkout-mobile" className="mb-2 block text-xs font-bold uppercase tracking-wider text-[#747783]">Mobile Number</label>
-                <div className="relative"><Phone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9e825d]" /><input id="checkout-mobile" type="tel" value={form.mobile} onChange={(event) => updateField('mobile', event.target.value)} aria-invalid={Boolean(errors.mobile)} inputMode="tel" className="w-full rounded-lg border border-[#12141a]/15 bg-[#faf8f5] py-3 pl-10 pr-4 text-sm outline-none transition-colors focus:border-[#9e825d] aria-[invalid=true]:border-red-500" placeholder="+91 98765 43210" /></div>
+                <div className="relative"><Phone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9e825d]" /><input id="checkout-mobile" type="tel" value={form.mobile} onChange={(event) => updateField('mobile', event.target.value)} aria-invalid={Boolean(errors.mobile)} inputMode="tel" className="w-full rounded-lg border border-[#12141a]/15 bg-[#faf8f5] py-3 pl-10 pr-4 text-sm outline-none transition-colors focus:border-[#9e825d] aria-[invalid=true]:border-red-500" placeholder={selectedCountry.dialCode ? `${selectedCountry.dialCode} mobile number` : '+1 555 123 4567'} /></div>
                 {errors.mobile && <p className="mt-1.5 text-xs text-red-600">{errors.mobile}</p>}
               </div>
               <button type="submit" disabled={isSubmitting || paymentOpened || orderStatus === 'PAID'} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#12141a] px-5 py-3.5 text-xs font-bold uppercase tracking-[0.14em] text-white transition-colors hover:bg-[#9e825d] disabled:cursor-not-allowed disabled:opacity-70">

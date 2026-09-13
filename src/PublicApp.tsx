@@ -13,6 +13,17 @@ import { GridOverlay } from './components/GridOverlay';
 import { PageLoader } from './components/PageLoader';
 import { ToastMessage, ToastType, ToastViewport } from './components/ToastViewport';
 import { soundManager } from './utils/sound';
+import { sectionTargets } from './utils/sectionLinks';
+
+const scrollToSection = (targetId: string, behavior: ScrollBehavior = 'smooth') => {
+  const element = document.getElementById(targetId);
+  if (!element) return false;
+
+  const headerOffset = 96;
+  const top = element.getBoundingClientRect().top + window.scrollY - headerOffset;
+  window.scrollTo({ top: Math.max(0, top), behavior });
+  return true;
+};
 
 export default function App() {
   const [activeDestination, setActiveDestination] = useState<string>('work');
@@ -38,17 +49,12 @@ export default function App() {
     setActiveDestination(destination);
     setIsLoading(true);
     
-    let targetId = destination;
-    if (destination === 'work') targetId = 'ai-architecture';
-    else if (destination === 'shop') targetId = 'shop';
-    else if (destination === 'about') targetId = 'about';
-    else if (destination === 'consult') targetId = 'consult';
-    else if (destination === 'home') targetId = 'hero';
+    const targetId = sectionTargets[destination as keyof typeof sectionTargets] || destination;
+    window.history.replaceState(null, '', `/#${targetId}`);
 
-    const element = document.getElementById(targetId);
-    if (element) {
+    if (scrollToSection(targetId)) {
       window.setTimeout(() => {
-        element.scrollIntoView({ behavior: 'smooth' });
+        scrollToSection(targetId);
         window.setTimeout(() => setIsLoading(false), 350);
       }, 120);
     } else {
@@ -67,6 +73,21 @@ export default function App() {
     }, 650);
 
     return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    const handleHashNavigation = () => {
+      const targetId = window.location.hash.slice(1);
+      if (!targetId) return;
+
+      window.setTimeout(() => {
+        scrollToSection(targetId, 'auto');
+      }, 120);
+    };
+
+    handleHashNavigation();
+    window.addEventListener('hashchange', handleHashNavigation);
+    return () => window.removeEventListener('hashchange', handleHashNavigation);
   }, []);
 
   // Scroll spy to highlight active section in Navbar

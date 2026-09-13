@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Check, RotateCcw } from 'lucide-react';
+import { Check, Copy, ExternalLink, RotateCcw } from 'lucide-react';
 import { useData } from '../../data/DataContext';
+import { sectionPath, type SectionLinkKey } from '../../utils/sectionLinks';
 
 const sectionLabels: Record<string, string> = {
   hero: 'Hero',
@@ -11,10 +12,19 @@ const sectionLabels: Record<string, string> = {
   footer: 'Footer',
 };
 
+const shareableSections: Array<{ key: SectionLinkKey; label: string }> = [
+  { key: 'home', label: 'Home' },
+  { key: 'work', label: 'AI Architecture' },
+  { key: 'shop', label: 'Shop' },
+  { key: 'about', label: 'About' },
+  { key: 'consult', label: 'Consultation' },
+];
+
 export default function SectionsPage() {
   const { data, updateData, resetData } = useData();
   const [sections, setSections] = useState(data.sections);
   const [notice, setNotice] = useState('');
+  const [copiedSection, setCopiedSection] = useState<SectionLinkKey | null>(null);
 
   useEffect(() => {
     setSections(data.sections);
@@ -37,6 +47,17 @@ export default function SectionsPage() {
       setNotice('Sections updated in Supabase.');
     } catch (error) {
       setNotice(error instanceof Error ? error.message : 'Sections could not be saved.');
+    }
+  };
+
+  const copySectionLink = async (section: SectionLinkKey) => {
+    const url = `${window.location.origin}${sectionPath(section)}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedSection(section);
+      window.setTimeout(() => setCopiedSection(null), 1800);
+    } catch {
+      setNotice('The section link could not be copied.');
     }
   };
 
@@ -74,6 +95,45 @@ export default function SectionsPage() {
           {notice}
         </div>
       )}
+
+      <div className="rounded-2xl border border-[#bfa37c]/25 bg-[#bfa37c]/5 p-5">
+        <div className="mb-4">
+          <h2 className="text-lg font-bold text-white">Shareable Section Links</h2>
+          <p className="mt-1 text-sm text-[#9a9da8]">Share these URLs to open the public site at a specific section.</p>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          {shareableSections.map(({ key, label }) => {
+            const url = `${window.location.origin}${sectionPath(key)}`;
+            return (
+              <div key={key} className="flex items-center gap-3 rounded-xl border border-white/10 bg-[#0e1015] p-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-white">{label}</p>
+                  <p className="truncate text-xs text-[#9a9da8]">{url}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void copySectionLink(key)}
+                  title={`Copy ${label} link`}
+                  aria-label={`Copy ${label} link`}
+                  className="rounded-lg border border-white/10 p-2 text-[#bfa37c] hover:bg-white/5"
+                >
+                  {copiedSection === key ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                </button>
+                <a
+                  href={url}
+                  target="_blank"
+                  rel="noreferrer"
+                  title={`Open ${label} section`}
+                  aria-label={`Open ${label} section`}
+                  className="rounded-lg border border-white/10 p-2 text-[#bfa37c] hover:bg-white/5"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                </a>
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
       <div className="grid gap-5">
         {Object.entries(sections).map(([key, section]: [string, any]) => (

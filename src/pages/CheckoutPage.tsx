@@ -29,6 +29,22 @@ const getAmountInPaise = (price: string | number | undefined) => {
   return Number.isFinite(numericValue) ? Math.round(numericValue * 100) : 0;
 };
 
+const getProductBullets = (product: any) => {
+  const directHighlights = [product.highlights, product.includes, product.contentHighlights]
+    .find((value) => Array.isArray(value) && value.length > 0);
+
+  if (directHighlights) return directHighlights.slice(0, 4);
+
+  return [
+    product.workflowStep,
+    product.specs?.format,
+    product.specs?.duration,
+    product.specs?.skillLevel && `Skill level: ${product.specs.skillLevel}`,
+    product.parameters?.engine && `Workflow: ${product.parameters.engine}`,
+    product.parameters?.materials && `Materials: ${product.parameters.materials}`,
+  ].filter(Boolean).slice(0, 4);
+};
+
 const getProductDetails = (product: any) => {
   if (!product) return null;
 
@@ -40,6 +56,8 @@ const getProductDetails = (product: any) => {
     compareAtPrice: product.compareAtPrice,
     amountInPaise: getAmountInPaise(product.price),
     currency: product.currency || 'INR',
+    description: product.description || product.previewText || product.tagline || product.subtitle,
+    bullets: getProductBullets(product),
   };
 };
 
@@ -386,25 +404,36 @@ export default function CheckoutPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f5f4ef] px-4 py-8 text-[#12141a] sm:px-6 sm:py-12 lg:px-8">
-      <div className="mx-auto max-w-5xl">
-        <button type="button" onClick={() => navigate(-1)} className="mb-8 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-[#747783] transition-colors hover:text-[#12141a]">
+    <main className="min-h-screen bg-[#f5f4ef] px-4 py-3 text-[#12141a] sm:px-6 sm:py-5 lg:px-8">
+      <div className="mx-auto max-w-6xl">
+        <button type="button" onClick={() => navigate(-1)} className="mb-3 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-[#747783] transition-colors hover:text-[#12141a]">
           <ArrowLeft className="h-4 w-4" />
           Back
         </button>
 
-        <div className="mb-8 space-y-2">
+        <div className="mb-4 space-y-1">
           <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#9e825d]">Secure Checkout</div>
-          <h1 className="text-3xl font-extrabold tracking-tight sm:text-5xl">Complete your details.</h1>
-          <p className="max-w-xl text-sm leading-relaxed text-[#4a4d57]">Enter your contact details to continue to the payment step.</p>
+          <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">Complete your details.</h1>
+          <p className="max-w-xl text-xs leading-relaxed text-[#4a4d57] sm:text-sm">Enter your contact details to continue to the payment step.</p>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-          <section className="rounded-2xl border border-[#12141a]/10 bg-white p-5 shadow-sm sm:p-6">
-            <div className="mb-5 text-[10px] font-bold uppercase tracking-[0.18em] text-[#9e825d]">Your selection</div>
-            {productDetails.image && <div className="mb-5 aspect-[16/10] overflow-hidden rounded-xl border border-[#12141a]/10 bg-[#ebe7df]"><img src={productDetails.image} alt={productDetails.title} className="h-full w-full object-cover" /></div>}
-            <h2 className="text-xl font-bold leading-snug">{productDetails.title}</h2>
-            <div className="mt-4 flex items-center justify-between border-t border-[#12141a]/10 pt-4">
+        <div className="grid items-start gap-4 lg:grid-cols-[1fr_1fr]">
+          <section className="rounded-2xl border border-[#12141a]/10 bg-white p-4 shadow-sm sm:p-5">
+            <div className="mb-3 text-[10px] font-bold uppercase tracking-[0.18em] text-[#9e825d]">Your selection</div>
+            {productDetails.image && <div className="mb-3 h-40 overflow-hidden rounded-xl border border-[#12141a]/10 bg-[#ebe7df] sm:h-44"><img src={productDetails.image} alt={productDetails.title} className="h-full w-full object-cover" /></div>}
+            <h2 className="text-lg font-bold leading-snug sm:text-xl">{productDetails.title}</h2>
+            {productDetails.description && <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-[#4a4d57]">{productDetails.description}</p>}
+            {productDetails.bullets.length > 0 && (
+              <ul className="mt-2.5 grid gap-1 text-xs leading-snug text-[#4a4d57] sm:grid-cols-2">
+                {productDetails.bullets.map((bullet: string) => (
+                  <li key={bullet} className="flex items-start gap-1.5">
+                    <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#9e825d]" />
+                    <span className="line-clamp-2">{bullet}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="mt-3 flex items-center justify-between border-t border-[#12141a]/10 pt-3">
               <span className="text-xs uppercase tracking-wider text-[#747783]">Total</span>
               <PriceDisplay
                 price={paymentOrder ? paymentOrder.amount / 100 : productDetails.price}
@@ -415,24 +444,24 @@ export default function CheckoutPage() {
             </div>
           </section>
 
-          <section className="rounded-2xl border border-[#12141a]/10 bg-white p-5 shadow-sm sm:p-6">
-            <div className="mb-5 flex items-center gap-2 border-b border-[#12141a]/10 pb-4"><CreditCard className="h-4 w-4 text-[#9e825d]" /><h2 className="text-sm font-bold uppercase tracking-[0.14em]">Customer details</h2></div>
-            <form onSubmit={(event) => { event.preventDefault(); void handleSubmit(); }} className="space-y-5" noValidate>
+          <section className="rounded-2xl border border-[#12141a]/10 bg-white p-4 shadow-sm sm:p-5">
+            <div className="mb-3 flex items-center gap-2 border-b border-[#12141a]/10 pb-3"><CreditCard className="h-4 w-4 text-[#9e825d]" /><h2 className="text-sm font-bold uppercase tracking-[0.14em]">Customer details</h2></div>
+            <form onSubmit={(event) => { event.preventDefault(); void handleSubmit(); }} className="space-y-3" noValidate>
               <div>
-                <label htmlFor="checkout-full-name" className="mb-2 block text-xs font-bold uppercase tracking-wider text-[#747783]">Full Name</label>
-                <div className="relative"><User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9e825d]" /><input id="checkout-full-name" type="text" value={form.fullName} onChange={(event) => updateField('fullName', event.target.value)} aria-invalid={Boolean(errors.fullName)} className="w-full rounded-lg border border-[#12141a]/15 bg-[#faf8f5] py-3 pl-10 pr-4 text-sm outline-none transition-colors focus:border-[#9e825d] aria-[invalid=true]:border-red-500" placeholder="Your full name" /></div>
+                <label htmlFor="checkout-full-name" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#747783]">Full Name</label>
+                <div className="relative"><User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9e825d]" /><input id="checkout-full-name" type="text" value={form.fullName} onChange={(event) => updateField('fullName', event.target.value)} aria-invalid={Boolean(errors.fullName)} className="w-full rounded-lg border border-[#12141a]/15 bg-[#faf8f5] py-2.5 pl-10 pr-4 text-sm outline-none transition-colors focus:border-[#9e825d] aria-[invalid=true]:border-red-500" placeholder="Your full name" /></div>
                 {errors.fullName && <p className="mt-1.5 text-xs text-red-600">{errors.fullName}</p>}
               </div>
               <div>
-                <label htmlFor="checkout-email" className="mb-2 block text-xs font-bold uppercase tracking-wider text-[#747783]">Email Address</label>
-                <div className="relative"><Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9e825d]" /><input id="checkout-email" type="email" value={form.email} onChange={(event) => updateField('email', event.target.value)} aria-invalid={Boolean(errors.email)} className="w-full rounded-lg border border-[#12141a]/15 bg-[#faf8f5] py-3 pl-10 pr-4 text-sm outline-none transition-colors focus:border-[#9e825d] aria-[invalid=true]:border-red-500" placeholder="you@example.com" /></div>
+                <label htmlFor="checkout-email" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#747783]">Email Address</label>
+                <div className="relative"><Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9e825d]" /><input id="checkout-email" type="email" value={form.email} onChange={(event) => updateField('email', event.target.value)} aria-invalid={Boolean(errors.email)} className="w-full rounded-lg border border-[#12141a]/15 bg-[#faf8f5] py-2.5 pl-10 pr-4 text-sm outline-none transition-colors focus:border-[#9e825d] aria-[invalid=true]:border-red-500" placeholder="you@example.com" /></div>
                 {errors.email && <p className="mt-1.5 text-xs text-red-600">{errors.email}</p>}
               </div>
               <div>
-                <label htmlFor="checkout-country" className="mb-2 block text-xs font-bold uppercase tracking-wider text-[#747783]">Country</label>
+                <label htmlFor="checkout-country" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#747783]">Country</label>
                 <div className="relative">
                   <Globe2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9e825d]" />
-                  <select id="checkout-country" value={form.countryCode} onChange={(event) => updateField('countryCode', event.target.value)} aria-invalid={Boolean(errors.countryCode)} className="w-full appearance-none rounded-lg border border-[#12141a]/15 bg-[#faf8f5] py-3 pl-10 pr-4 text-sm outline-none transition-colors focus:border-[#9e825d] aria-[invalid=true]:border-red-500">
+                  <select id="checkout-country" value={form.countryCode} onChange={(event) => updateField('countryCode', event.target.value)} aria-invalid={Boolean(errors.countryCode)} className="w-full appearance-none rounded-lg border border-[#12141a]/15 bg-[#faf8f5] py-2.5 pl-10 pr-4 text-sm outline-none transition-colors focus:border-[#9e825d] aria-[invalid=true]:border-red-500">
                     {countryOptions.map((country) => (
                       <option key={country.code} value={country.code}>
                         {country.name}{country.dialCode ? ` (${country.dialCode})` : ''}
@@ -443,11 +472,11 @@ export default function CheckoutPage() {
                 {errors.countryCode && <p className="mt-1.5 text-xs text-red-600">{errors.countryCode}</p>}
               </div>
               <div>
-                <label htmlFor="checkout-mobile" className="mb-2 block text-xs font-bold uppercase tracking-wider text-[#747783]">Mobile Number</label>
-                <div className="relative"><Phone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9e825d]" /><input id="checkout-mobile" type="tel" value={form.mobile} onChange={(event) => updateField('mobile', event.target.value)} aria-invalid={Boolean(errors.mobile)} inputMode="tel" className="w-full rounded-lg border border-[#12141a]/15 bg-[#faf8f5] py-3 pl-10 pr-4 text-sm outline-none transition-colors focus:border-[#9e825d] aria-[invalid=true]:border-red-500" placeholder={selectedCountry.dialCode ? `${selectedCountry.dialCode} mobile number` : '+1 555 123 4567'} /></div>
+                <label htmlFor="checkout-mobile" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#747783]">Mobile Number</label>
+                <div className="relative"><Phone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9e825d]" /><input id="checkout-mobile" type="tel" value={form.mobile} onChange={(event) => updateField('mobile', event.target.value)} aria-invalid={Boolean(errors.mobile)} inputMode="tel" className="w-full rounded-lg border border-[#12141a]/15 bg-[#faf8f5] py-2.5 pl-10 pr-4 text-sm outline-none transition-colors focus:border-[#9e825d] aria-[invalid=true]:border-red-500" placeholder={selectedCountry.dialCode ? `${selectedCountry.dialCode} mobile number` : '+1 555 123 4567'} /></div>
                 {errors.mobile && <p className="mt-1.5 text-xs text-red-600">{errors.mobile}</p>}
               </div>
-              <button type="submit" disabled={isSubmitting || paymentOpened || orderStatus === 'PAID'} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#12141a] px-5 py-3.5 text-xs font-bold uppercase tracking-[0.14em] text-white transition-colors hover:bg-[#9e825d] disabled:cursor-not-allowed disabled:opacity-70">
+              <button type="submit" disabled={isSubmitting || paymentOpened || orderStatus === 'PAID'} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#12141a] px-5 py-3 text-xs font-bold uppercase tracking-[0.14em] text-white transition-colors hover:bg-[#9e825d] disabled:cursor-not-allowed disabled:opacity-70">
                 {orderStatus === 'PAID' ? <CheckCircle2 className="h-4 w-4 text-emerald-400" /> : <CreditCard className="h-4 w-4" />}
                 {isSubmitting ? 'Verifying Payment...' : orderStatus === 'PAID' ? 'Payment Verified' : paymentOpened ? 'Payment Window Opened' : paymentOrder ? 'Open Payment Again' : 'Proceed to Payment'}
               </button>

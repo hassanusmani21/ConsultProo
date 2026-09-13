@@ -39,3 +39,7 @@ Redeploy after saving the variables. Make one small Razorpay test purchase and c
 - the buyer receives the branded confirmation email with the same IDs and access link.
 
 The email is sent through Resend after the payment is marked `PAID`. If Resend is temporarily unavailable, the payment still succeeds and the customer can use the access link shown on the success page.
+
+## 4. Manage purchases
+
+Open **Admin -> Purchases** after signing in. The page loads orders through a protected server endpoint, so the admin view is not blocked by browser RLS filtering. Use **Sync Razorpay** to import captured payments from the currently configured Razorpay account, including test payments made before the local order record was available. The page supports filtering by status, date range, name, email, phone, product, customer ID, order ID, and payment ID. **Excel CSV** downloads the filtered rows, and **PDF / Print** opens the browser print dialog where you can choose Save to PDF.

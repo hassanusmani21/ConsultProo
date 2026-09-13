@@ -11,10 +11,16 @@ export default function Dashboard() {
   useEffect(() => {
     const loadPurchaseCount = async () => {
       if (!supabase) return;
-      const { count } = await supabase
-        .from('orders')
-        .select('*', { count: 'exact', head: true });
-      setPurchaseCount(count ?? 0);
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) return;
+
+      const response = await fetch('/api/admin-purchases', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!response.ok) return;
+      const result = await response.json().catch(() => ({}));
+      setPurchaseCount(Array.isArray(result.purchases) ? result.purchases.length : 0);
     };
 
     void loadPurchaseCount();

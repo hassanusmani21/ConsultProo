@@ -105,3 +105,33 @@
   scrollbar-width: none;
 }
 
+@media print {
+  html,
+  body {
+    background: #ffffff !important;
+    color: #12141a !important;
+  }
+
+  .print-report {
+    color: #12141a !important;
+  }
+
+  .print-report [class*="bg-[#14161f]"],
+  .print-report [class*="bg-[#181a24]"],
+  .print-report [class*="bg-[#0e1015]"] {
+    background: #ffffff !important;
+  }
+
+  .print-report [class*="text-white"] {
+    color: #12141a !important;
+  }
+
+  .print-report [class*="text-[#9a9da8]"],
+  .print-report [class*="text-[#6f7280]"] {
+    color: #4a4d57 !important;
+  }
+
+  .print-report [class*="border-white"] {
+    border-color: #d8d5ce !important;
+  }
+}

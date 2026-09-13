@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { Check, Edit2, FileUp, Plus, RotateCcw, Trash2, UploadCloud, X } from 'lucide-react';
+import { Check, Copy, Edit2, ExternalLink, FileUp, Plus, RotateCcw, Trash2, UploadCloud, X } from 'lucide-react';
 import { useData } from '../../data/DataContext';
 import { supabase } from '../../lib/supabase';
+import { isCheckoutProduct, productCheckoutPath } from '../../utils/productLinks';
 
 type FieldType = 'text' | 'textarea' | 'number' | 'checkbox' | 'select' | 'list' | 'image' | 'images' | 'file';
 
@@ -177,6 +178,8 @@ const configs: Record<string, CollectionConfig> = {
       { path: 'price', label: 'Sale Price' },
       { path: 'compareAtPrice', label: 'Original Price (optional)', placeholder: 'Must be higher than sale price' },
       { path: 'currency', label: 'Currency', type: 'select', options: ['INR', 'USD', 'AED', 'EUR'] },
+      { path: 'deliveryType', label: 'Delivery Type', type: 'select', options: ['pdf', 'video', 'course'] },
+      { path: 'storagePath', label: 'Secure Product File', type: 'file' },
       { path: 'badge', label: 'Badge' },
       { path: 'specs.format', label: 'Format' },
       { path: 'specs.itemsCount', label: 'Items Count' },
@@ -307,6 +310,22 @@ export default function CrudPage({ collection }: CrudPageProps) {
   const [formData, setFormData] = useState<any>(() => ({ ...emptyItemFor(config), id: crypto.randomUUID() }));
   const [notice, setNotice] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [copiedLinkId, setCopiedLinkId] = useState<string | null>(null);
+
+  const copyProductLink = async (item: any) => {
+    const path = productCheckoutPath(item.id);
+    const url = `${window.location.origin}${path}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedLinkId(item.id);
+      setNotice(`Direct checkout link copied: ${url}`);
+      window.setTimeout(() => setCopiedLinkId((current) => current === item.id ? null : current), 2200);
+    } catch {
+      setNotice(`Copy failed. Use this direct checkout link: ${url}`);
+    }
+  };
+
+  const supportsDirectCheckout = (item: any) => isCheckoutProduct(config.collection, item);
 
   const openCreate = () => {
     setEditingId(null);
@@ -482,8 +501,36 @@ export default function CrudPage({ collection }: CrudPageProps) {
                         <span className="rounded bg-emerald-400/10 px-2 py-0.5 text-[10px] font-bold uppercase text-emerald-300">Published</span>
                       )}
                     </div>
+                    {supportsDirectCheckout(item) && item.id && (
+                      <div className="mt-2 truncate text-[10px] text-[#747783]" title={`${window.location.origin}${productCheckoutPath(item.id)}`}>
+                        ID: {item.id} · /buy/{item.id}
+                      </div>
+                    )}
                   </div>
                   <div className="flex shrink-0 items-start gap-2">
+                    {supportsDirectCheckout(item) && item.id && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => copyProductLink(item)}
+                          className="rounded-lg border border-white/10 bg-[#181a24] p-2 text-[#9a9da8] transition-colors hover:text-white"
+                          aria-label={copiedLinkId === item.id ? 'Checkout link copied' : 'Copy checkout link'}
+                          title={copiedLinkId === item.id ? 'Copied' : 'Copy checkout link'}
+                        >
+                          {copiedLinkId === item.id ? <Check className="h-4 w-4 text-emerald-300" /> : <Copy className="h-4 w-4" />}
+                        </button>
+                        <a
+                          href={productCheckoutPath(item.id)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="rounded-lg border border-white/10 bg-[#181a24] p-2 text-[#9a9da8] transition-colors hover:text-white"
+                          aria-label="Open checkout link"
+                          title="Open checkout link"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </a>
+                      </>
+                    )}
                     <button
                       type="button"
                       onClick={() => openEdit(item)}

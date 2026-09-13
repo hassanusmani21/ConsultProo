@@ -23,7 +23,7 @@ interface DataContextType {
 const DataContext = createContext<DataContextType | undefined>(undefined);
 const STORAGE_KEY = 'ar_ahmed_cms_data';
 const SINGLETON_COLLECTIONS = new Set(['profile', 'masterclass']);
-const PRODUCT_COLLECTIONS = new Set(['ebooks', 'villaPlans', 'aiPrompts']);
+const PRODUCT_COLLECTIONS = new Set(['ebooks', 'villaPlans', 'aiPrompts', 'digitalProducts']);
 
 const defaultData = {
   profile: mockData.initialProfile,
@@ -117,7 +117,13 @@ const isPaidProduct = (collection: string, item: any) => (
 
 const productStoragePath = (collection: string, item: any) => {
   if (item?.storagePath || item?.pdfStoragePath) return item.storagePath || item.pdfStoragePath;
-  const folder = collection === 'ebooks' ? 'ebooks' : collection === 'villaPlans' ? 'villa-plans' : 'prompts';
+  const folder = collection === 'ebooks'
+    ? 'ebooks'
+    : collection === 'villaPlans'
+      ? 'villa-plans'
+      : collection === 'digitalProducts'
+        ? 'courses'
+        : 'prompts';
   return `${folder}/${item.id}.pdf`;
 };
 
@@ -208,7 +214,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       price: Number(item.price),
       currency: 'INR',
       storage_path: productStoragePath(collection, item),
-      delivery_type: 'pdf',
+      delivery_type: ['pdf', 'video', 'course'].includes(item.deliveryType) ? item.deliveryType : 'pdf',
       active: activeOverride ?? item.published !== false,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'id' });

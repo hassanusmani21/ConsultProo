@@ -155,6 +155,8 @@ export default function CheckoutPage() {
       ? 'villaPlans'
       : collection === 'ai-prompts'
         ? 'aiPrompts'
+        : collection === 'digital-products'
+          ? 'digitalProducts'
         : collection;
     const records = data[collectionKey] || [];
     return records.find((item: any) => item.id === productId);

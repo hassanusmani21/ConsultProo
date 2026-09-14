@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useData } from '../../data/DataContext';
 import { Link } from 'react-router-dom';
-import { FolderKanban, Sofa, BookOpen, Home, Wand2, Video, ReceiptText } from 'lucide-react';
+import { ExternalLink, FolderKanban, Sofa, BookOpen, Home, Wand2, Video, ReceiptText } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 export default function Dashboard() {
@@ -38,9 +38,20 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-        <p className="text-[#9a9da8] text-sm mt-1">Overview of your content management system.</p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Dashboard</h1>
+          <p className="text-[#9a9da8] text-sm mt-1">Overview of your content management system.</p>
+        </div>
+        <a
+          href="/"
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#bfa37c] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-[#0e1015] transition-colors hover:bg-[#d6be9c]"
+        >
+          <ExternalLink className="h-4 w-4" />
+          View Website
+        </a>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

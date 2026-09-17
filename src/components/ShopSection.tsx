@@ -15,13 +15,15 @@ import {
   Maximize2,
   FileText,
   Compass,
-  Terminal
+  Terminal,
+  Share2
 } from 'lucide-react';
 import { useData } from '../data/DataContext';
 import { EbookProduct, VillaPlan, AiPromptData } from '../types';
 import { soundManager } from '../utils/sound';
 import { PriceDisplay } from './PriceDisplay';
 import { getFreePromptCompareAtPrice, getFreePromptDownloadUrl, hasPromptFile } from '../utils/freePromptAccess';
+import { getPromptShareUrl } from '../utils/promptLinks';
 
 interface ShopSectionProps {
   onSetCursorText?: (text?: string) => void;
@@ -38,6 +40,7 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
   const [selectedPlan, setSelectedPlan] = useState<VillaPlan | null>(null);
   const [selectedPrompt, setSelectedPrompt] = useState<AiPromptData | null>(null);
   const [copiedPromptId, setCopiedPromptId] = useState<string | null>(null);
+  const [copiedPromptLinkId, setCopiedPromptLinkId] = useState<string | null>(null);
   const [selectedPlotSize, setSelectedPlotSize] = useState<string>('');
   const ebooksList = data.ebooks.filter((item: EbookProduct & { published?: boolean }) => item.published !== false);
   const villaPlans = data.villaPlans.filter((item: VillaPlan & { published?: boolean }) => item.published !== false);
@@ -85,6 +88,13 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
     setCopiedPromptId(prompt.id);
     soundManager.playClick();
     setTimeout(() => setCopiedPromptId(null), 2000);
+  };
+
+  const handleCopyPromptLink = async (prompt: AiPromptData) => {
+    await navigator.clipboard.writeText(getPromptShareUrl(prompt.id));
+    setCopiedPromptLinkId(prompt.id);
+    soundManager.playClick();
+    setTimeout(() => setCopiedPromptLinkId(null), 2000);
   };
 
   const handleCheckout = (collection: string, productId: string) => {
@@ -678,38 +688,58 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
                   />
                 </div>
 
-                {selectedPrompt.type === 'FREE' ? (
+                <div className="flex flex-col sm:flex-row gap-2 sm:justify-end">
                   <button
-                    onClick={(e) => handleCopyPrompt(selectedPrompt, e)}
-                    className="px-6 py-3 rounded-xl bg-[#12141a] text-[#ffffff] font-sans font-bold text-xs uppercase tracking-[0.14em] hover:bg-[#bfa37c] hover:text-[#12141a] active:scale-95 transition-all flex items-center justify-center gap-2 shadow-xl"
+                    type="button"
+                    onClick={() => handleCopyPromptLink(selectedPrompt)}
+                    className="px-4 py-3 rounded-xl bg-[#f2eee6] text-[#12141a] font-sans font-bold text-xs uppercase tracking-[0.14em] hover:bg-[#ebe7df] active:scale-95 transition-all flex items-center justify-center gap-2"
                   >
-                    {copiedPromptId === selectedPrompt.id ? (
+                    {copiedPromptLinkId === selectedPrompt.id ? (
                       <>
-                        <Check className="w-4 h-4 text-emerald-400" />
-                        <span>Prompt Copied</span>
-                      </>
-                    ) : hasPromptFile(selectedPrompt) ? (
-                      <>
-                        <Download className="w-4 h-4" />
-                        <span>Download PDF</span>
+                        <Check className="w-4 h-4 text-emerald-600" />
+                        <span>Link Copied</span>
                       </>
                     ) : (
                       <>
-                        <Copy className="w-4 h-4" />
-                        <span>Copy Prompt</span>
+                        <Share2 className="w-4 h-4" />
+                        <span>Copy Link</span>
                       </>
                     )}
                   </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => handleCheckout('ai-prompts', selectedPrompt.id)}
-                    className="px-6 py-3 rounded-xl bg-[#12141a] text-[#ffffff] font-sans font-bold text-xs uppercase tracking-[0.14em] hover:bg-[#bfa37c] hover:text-[#12141a] active:scale-95 transition-all flex items-center justify-center gap-2 shadow-xl"
-                  >
-                    <Lock className="w-4 h-4" />
-                    <span>Buy Prompt</span>
-                  </button>
-                )}
+
+                  {selectedPrompt.type === 'FREE' ? (
+                    <button
+                      onClick={(e) => handleCopyPrompt(selectedPrompt, e)}
+                      className="px-6 py-3 rounded-xl bg-[#12141a] text-[#ffffff] font-sans font-bold text-xs uppercase tracking-[0.14em] hover:bg-[#bfa37c] hover:text-[#12141a] active:scale-95 transition-all flex items-center justify-center gap-2 shadow-xl"
+                    >
+                      {copiedPromptId === selectedPrompt.id ? (
+                        <>
+                          <Check className="w-4 h-4 text-emerald-400" />
+                          <span>Prompt Copied</span>
+                        </>
+                      ) : hasPromptFile(selectedPrompt) ? (
+                        <>
+                          <Download className="w-4 h-4" />
+                          <span>Download PDF</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-4 h-4" />
+                          <span>Copy Prompt</span>
+                        </>
+                      )}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleCheckout('ai-prompts', selectedPrompt.id)}
+                      className="px-6 py-3 rounded-xl bg-[#12141a] text-[#ffffff] font-sans font-bold text-xs uppercase tracking-[0.14em] hover:bg-[#bfa37c] hover:text-[#12141a] active:scale-95 transition-all flex items-center justify-center gap-2 shadow-xl"
+                    >
+                      <Lock className="w-4 h-4" />
+                      <span>Buy Prompt</span>
+                    </button>
+                  )}
+                </div>
               </div>
             </motion.div>
           </div>

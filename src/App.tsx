@@ -6,6 +6,7 @@ import AdminApp from './admin/AdminApp';
 import { AuthProvider } from './admin/auth/AuthContext';
 import CheckoutPage from './pages/CheckoutPage';
 import DirectCheckoutPage from './pages/DirectCheckoutPage';
+import DirectPromptPage from './pages/DirectPromptPage';
 import PurchaseSuccessPage from './pages/PurchaseSuccessPage';
 
 export default function App() {
@@ -15,6 +16,7 @@ export default function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/admin/*" element={<AdminApp />} />
+            <Route path="/prompts/:promptId" element={<DirectPromptPage />} />
             <Route path="/buy/:productId" element={<DirectCheckoutPage />} />
             <Route path="/checkout/:collection/:productId" element={<CheckoutPage />} />
             <Route path="/purchase-success" element={<PurchaseSuccessPage />} />

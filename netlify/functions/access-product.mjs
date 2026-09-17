@@ -70,6 +70,35 @@ const getProduct = async (config, order) => {
   };
 };
 
+const getCmsProduct = async (config, collection, productId) => {
+  const query = new URLSearchParams({
+    collection: `eq.${collection}`,
+    item_id: `eq.${productId}`,
+    published: 'eq.true',
+    select: 'collection,item_id,data,published',
+    limit: '1',
+  });
+  const response = await fetch(`${config.supabaseUrl}/rest/v1/cms_content?${query}`, {
+    headers: supabaseHeaders(config.supabaseServiceRoleKey),
+  });
+  if (!response.ok) throw new Error(`CMS product lookup failed with status ${response.status}`);
+  const records = await response.json();
+  return records[0]?.data || null;
+};
+
+const isFreeCmsProduct = (collection, product) => {
+  if (!product || product.published === false) return false;
+  if (collection === 'aiPrompts') return String(product.type || '').toUpperCase() === 'FREE';
+  if (String(product.badge || '').toUpperCase() === 'FREE') return true;
+
+  const price = Number(String(product.price ?? '').replace(/[^0-9.-]/g, ''));
+  return !Number.isFinite(price) || price <= 0;
+};
+
+const getCmsStoragePath = (product) => (
+  product?.storagePath || product?.pdfStoragePath || product?.pdfUrl || ''
+);
+
 const updateLastAccessed = async (config, accessId) => {
   const query = new URLSearchParams({ id: `eq.${accessId}` });
   await fetch(`${config.supabaseUrl}/rest/v1/product_access?${query}`, {
@@ -101,14 +130,48 @@ export default async (request) => {
   if (request.method !== 'GET') return jsonResponse({ error: 'Method not allowed.' }, 405);
 
   const config = getConfig();
-  if (!config.supabaseUrl || !config.supabaseServiceRoleKey || !config.accessTokenSecret) {
+  if (!config.supabaseUrl || !config.supabaseServiceRoleKey) {
     return jsonResponse({ error: 'Product access is not configured yet.' }, 503);
   }
 
-  const token = new URL(request.url).searchParams.get('token') || '';
-  if (!/^[A-Za-z0-9_-]{40,200}$/.test(token)) return jsonResponse({ error: 'This access link is invalid or expired.' }, 404);
+  const url = new URL(request.url);
+  const token = url.searchParams.get('token') || '';
+  const collection = url.searchParams.get('collection') || '';
+  const productId = url.searchParams.get('id') || '';
 
   try {
+    if (!token && collection && productId) {
+      if (!['ebooks', 'villaPlans', 'aiPrompts', 'digitalProducts'].includes(collection)) {
+        return jsonResponse({ error: 'This free resource is not available.' }, 404);
+      }
+      if (!/^[A-Za-z0-9._:-]{1,160}$/.test(productId)) {
+        return jsonResponse({ error: 'This free resource link is invalid.' }, 404);
+      }
+
+      const product = await getCmsProduct(config, collection, productId);
+      if (!isFreeCmsProduct(collection, product)) {
+        return jsonResponse({ error: 'This resource requires checkout.' }, 403);
+      }
+
+      const storagePath = getCmsStoragePath(product).trim();
+      if (!storagePath) return jsonResponse({ error: 'The free file is not available yet.' }, 404);
+
+      const signedUrl = /^https?:\/\//i.test(storagePath)
+        ? storagePath
+        : await getSignedUrl(config, storagePath);
+
+      return new Response(null, {
+        status: 302,
+        headers: {
+          Location: signedUrl,
+          'Cache-Control': 'no-store, private',
+        },
+      });
+    }
+
+    if (!config.accessTokenSecret) return jsonResponse({ error: 'Product access is not configured yet.' }, 503);
+    if (!/^[A-Za-z0-9_-]{40,200}$/.test(token)) return jsonResponse({ error: 'This access link is invalid or expired.' }, 404);
+
     const tokenHash = createHash('sha256').update(token).digest('hex');
     const access = await getAccessRecord(config, tokenHash);
     if (!access) return jsonResponse({ error: 'This access link is invalid or expired.' }, 404);

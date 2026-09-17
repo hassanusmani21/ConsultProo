@@ -21,6 +21,7 @@ import { useData } from '../data/DataContext';
 import { EbookProduct, VillaPlan, AiPromptData } from '../types';
 import { soundManager } from '../utils/sound';
 import { PriceDisplay } from './PriceDisplay';
+import { getFreePromptCompareAtPrice, getFreePromptDownloadUrl, hasPromptFile } from '../utils/freePromptAccess';
 
 interface ShopSectionProps {
   onSetCursorText?: (text?: string) => void;
@@ -71,6 +72,12 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
     e?.stopPropagation();
     if (prompt.type !== 'FREE') {
       handleOpenPrompt(prompt);
+      return;
+    }
+
+    if (hasPromptFile(prompt)) {
+      window.location.href = getFreePromptDownloadUrl(prompt);
+      soundManager.playClick();
       return;
     }
 
@@ -273,6 +280,7 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
               {aiPromptsLibrary.map((prompt) => {
                 const isCopied = copiedPromptId === prompt.id;
+                const hasFreePdf = prompt.type === 'FREE' && hasPromptFile(prompt);
 
                 return (
                   <div
@@ -341,7 +349,12 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
                         }`}
                       >
                         {prompt.type === 'FREE' ? (
-                          isCopied ? (
+                          hasFreePdf ? (
+                            <>
+                              <Download className="w-3.5 h-3.5" />
+                              <span>Download PDF</span>
+                            </>
+                          ) : isCopied ? (
                             <>
                               <Check className="w-3.5 h-3.5 text-emerald-500" />
                               <span>Copied</span>
@@ -627,13 +640,27 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
 
                   <div className="p-4 rounded-xl bg-[#faf8f5] border border-[#12141a]/10 space-y-2">
                     <div className="text-[10px] font-sans font-bold text-[#9e825d] uppercase tracking-wider">
-                      Prompt Matrix Syntax
+                      {hasPromptFile(selectedPrompt) && selectedPrompt.type === 'FREE' ? 'PDF Prompt File' : 'Prompt Matrix Syntax'}
                     </div>
-                    <p className="text-[#4a4d57] font-mono text-xs select-all bg-[#ffffff] p-3 rounded border border-[#12141a]/10 leading-relaxed max-h-36 overflow-y-auto no-scrollbar">
-                      {selectedPrompt.type === 'FREE'
-                        ? selectedPrompt.fullPrompt
-                        : `${selectedPrompt.previewText} ... [premium parameters locked]`}
-                    </p>
+                    {hasPromptFile(selectedPrompt) && selectedPrompt.type === 'FREE' ? (
+                      <div className="flex items-start gap-3 bg-[#ffffff] p-3 rounded border border-[#12141a]/10">
+                        <FileText className="w-5 h-5 text-[#9e825d] shrink-0 mt-0.5" />
+                        <div className="space-y-1">
+                          <p className="text-xs font-sans font-bold text-[#12141a]">
+                            This free prompt is delivered as a downloadable PDF.
+                          </p>
+                          <p className="text-[11px] font-sans text-[#747783] leading-relaxed">
+                            Text copy is hidden because a PDF file has been uploaded for this prompt.
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-[#4a4d57] font-mono text-xs select-all bg-[#ffffff] p-3 rounded border border-[#12141a]/10 leading-relaxed max-h-36 overflow-y-auto no-scrollbar">
+                        {selectedPrompt.type === 'FREE'
+                          ? selectedPrompt.fullPrompt
+                          : `${selectedPrompt.previewText} ... [premium parameters locked]`}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -645,7 +672,7 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
                   </span>
                   <PriceDisplay
                     price={selectedPrompt.type === 'FREE' ? 0 : selectedPrompt.price || '29'}
-                    compareAtPrice={selectedPrompt.type === 'FREE' ? undefined : selectedPrompt.compareAtPrice}
+                    compareAtPrice={selectedPrompt.type === 'FREE' ? getFreePromptCompareAtPrice(selectedPrompt) : selectedPrompt.compareAtPrice}
                     currency={selectedPrompt.currency}
                     currentClassName="text-2xl font-sans font-extrabold text-[#12141a]"
                   />
@@ -660,6 +687,11 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
                       <>
                         <Check className="w-4 h-4 text-emerald-400" />
                         <span>Prompt Copied</span>
+                      </>
+                    ) : hasPromptFile(selectedPrompt) ? (
+                      <>
+                        <Download className="w-4 h-4" />
+                        <span>Download PDF</span>
                       </>
                     ) : (
                       <>

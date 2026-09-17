@@ -31,6 +31,9 @@ export interface AiPromptData {
   compareAtPrice?: string | number;
   currency?: string;
   purchaseUrl?: string;
+  storagePath?: string;
+  pdfStoragePath?: string;
+  pdfUrl?: string;
   featured?: boolean;
   workflowStep?: string;
   parameters?: {
@@ -94,6 +97,8 @@ export interface EbookProduct {
   compareAtPrice?: string | number;
   currency: string;
   pdfUrl?: string;
+  storagePath?: string;
+  pdfStoragePath?: string;
   purchaseUrl: string;
   pagesCount: string;
   format: string;
@@ -123,6 +128,9 @@ export interface DigitalProduct {
   price?: string | number;
   compareAtPrice?: string | number;
   currency?: string;
+  storagePath?: string;
+  pdfStoragePath?: string;
+  pdfUrl?: string;
 }
 
 export interface PromptDemo {

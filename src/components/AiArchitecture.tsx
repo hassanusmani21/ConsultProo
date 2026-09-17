@@ -19,13 +19,16 @@ import {
   Video,
   Grid,
   ChevronRight,
-  Eye
+  Eye,
+  Download,
+  FileText
 } from 'lucide-react';
 import { aiVideosList } from '../data/aiPromptsData';
 import { useData } from '../data/DataContext';
 import { AiCategory, AiPromptData } from '../types';
 import { soundManager } from '../utils/sound';
 import { PriceDisplay } from './PriceDisplay';
+import { getFreePromptDownloadUrl, hasPromptFile } from '../utils/freePromptAccess';
 
 interface AiArchitectureProps {
   onNavigateConsultation?: () => void;
@@ -112,6 +115,12 @@ export const AiArchitecture: React.FC<AiArchitectureProps> = ({
   const handleCopyPrompt = (prompt: AiPromptData, e?: React.MouseEvent) => {
     e?.stopPropagation();
     if (prompt.type === 'FREE') {
+      if (hasPromptFile(prompt)) {
+        window.location.href = getFreePromptDownloadUrl(prompt);
+        soundManager.playClick();
+        return;
+      }
+
       navigator.clipboard.writeText(prompt.fullPrompt);
       setCopiedId(prompt.id);
       soundManager.playClick();
@@ -386,7 +395,17 @@ export const AiArchitecture: React.FC<AiArchitectureProps> = ({
                     <span className="text-[#c5a880] font-mono">{activePrompt.parameters?.aspectRatio || '--ar 16:9'}</span>
                   </div>
 
-                  {activePrompt.type === 'FREE' ? (
+                  {activePrompt.type === 'FREE' && hasPromptFile(activePrompt) ? (
+                    <div className="flex items-start gap-3 p-3 rounded-lg bg-[#13151c] border border-white/5">
+                      <FileText className="w-5 h-5 text-[#c5a880] shrink-0 mt-0.5" />
+                      <div className="space-y-1">
+                        <div className="text-xs font-sans font-bold text-white">Downloadable PDF prompt file</div>
+                        <p className="text-[11px] font-sans text-[#8e929b] leading-relaxed">
+                          The text prompt is hidden because this free resource has an uploaded PDF.
+                        </p>
+                      </div>
+                    </div>
+                  ) : activePrompt.type === 'FREE' ? (
                     <div className="p-3 rounded-lg bg-[#13151c] border border-white/5 font-mono text-xs text-[#e8e9ed] leading-relaxed select-all max-h-32 overflow-y-auto no-scrollbar">
                       &ldquo;{activePrompt.previewText}&rdquo;
                     </div>
@@ -427,7 +446,12 @@ export const AiArchitecture: React.FC<AiArchitectureProps> = ({
                     onClick={(e) => handleCopyPrompt(activePrompt, e)}
                     className="w-full py-4 rounded-xl bg-[#c5a880] text-[#090a0f] font-sans font-bold text-xs uppercase tracking-[0.16em] hover:bg-[#d8be96] active:scale-95 transition-all flex items-center justify-center gap-2 shadow-xl shadow-[#c5a880]/15"
                   >
-                    {copiedId === activePrompt.id ? (
+                    {hasPromptFile(activePrompt) ? (
+                      <>
+                        <Download className="w-4 h-4" />
+                        <span>DOWNLOAD FREE PDF</span>
+                      </>
+                    ) : copiedId === activePrompt.id ? (
                       <>
                         <Check className="w-4 h-4 text-[#090a0f]" />
                         <span>PROMPT COPIED ✓</span>
@@ -507,7 +531,17 @@ export const AiArchitecture: React.FC<AiArchitectureProps> = ({
                   <div className="text-[10px] font-sans font-bold text-[#c5a880] uppercase tracking-wider">
                     COMPLETE PROMPT MATRIX
                   </div>
-                  {selectedPromptModal.type === 'FREE' ? (
+                  {selectedPromptModal.type === 'FREE' && hasPromptFile(selectedPromptModal) ? (
+                    <div className="flex items-start gap-3 text-xs text-[#e8e9ed] bg-[#13151c] p-3 rounded leading-relaxed">
+                      <FileText className="w-5 h-5 text-[#c5a880] shrink-0 mt-0.5" />
+                      <div>
+                        <div className="font-sans font-bold text-white">Downloadable PDF prompt file</div>
+                        <p className="mt-1 text-[#8e929b]">
+                          Text copy is hidden because a PDF file has been uploaded for this free prompt.
+                        </p>
+                      </div>
+                    </div>
+                  ) : selectedPromptModal.type === 'FREE' ? (
                     <p className="text-xs font-mono text-[#e8e9ed] bg-[#13151c] p-3 rounded select-all leading-relaxed">
                       {selectedPromptModal.fullPrompt}
                     </p>
@@ -538,8 +572,17 @@ export const AiArchitecture: React.FC<AiArchitectureProps> = ({
                     }}
                     className="px-5 py-2 rounded-lg bg-[#c5a880] text-[#090a0f] font-sans font-bold text-xs uppercase tracking-wider hover:bg-[#d8be96] flex items-center gap-1.5"
                   >
-                    {copiedId === selectedPromptModal.id ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                    <span>{copiedId === selectedPromptModal.id ? 'COPIED' : 'COPY PROMPT'}</span>
+                    {hasPromptFile(selectedPromptModal) ? (
+                      <>
+                        <Download className="w-3.5 h-3.5" />
+                        <span>DOWNLOAD PDF</span>
+                      </>
+                    ) : (
+                      <>
+                        {copiedId === selectedPromptModal.id ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                        <span>{copiedId === selectedPromptModal.id ? 'COPIED' : 'COPY PROMPT'}</span>
+                      </>
+                    )}
                   </button>
                 ) : (
                   <button

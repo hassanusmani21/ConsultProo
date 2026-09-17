@@ -13,6 +13,7 @@ interface FieldConfig {
   options?: string[];
   placeholder?: string;
   accept?: string;
+  helper?: string;
 }
 
 interface CollectionConfig {
@@ -104,24 +105,24 @@ const configs: Record<string, CollectionConfig> = {
   },
   aiPrompts: {
     title: 'AI Prompts',
-    description: 'Manage prompt cards, pricing, preview text, and generation parameters.',
+    description: 'Manage prompt cards, free text-copy prompts, PDF downloads, and premium checkout prompts.',
     collection: 'aiPrompts',
     fields: [
       { path: 'code', label: 'Prompt Code' },
       { path: 'title', label: 'Title' },
       { path: 'category', label: 'Category', type: 'select', options: ['ARCHITECTURE', 'INTERIOR DESIGN', 'RENOVATION', 'EXTERIOR', 'MATERIALS', 'LIGHTING', 'VISUALIZATION'] },
-      { path: 'type', label: 'Type', type: 'select', options: ['FREE', 'PREMIUM'] },
-      { path: 'previewText', label: 'Preview Text', type: 'textarea' },
-      { path: 'fullPrompt', label: 'Full Prompt', type: 'textarea' },
+      { path: 'type', label: 'Access Type', type: 'select', options: ['FREE', 'PREMIUM'], helper: 'FREE shows copy/download buttons. PREMIUM sends users to checkout.' },
+      { path: 'previewText', label: 'Preview Text', type: 'textarea', helper: 'Shown on prompt cards and as the locked preview for premium prompts.' },
+      { path: 'fullPrompt', label: 'Text Prompt', type: 'textarea', helper: 'Used only when no PDF file is attached. If a PDF is attached, public pages hide this text and show Download PDF.' },
       { path: 'thumbnail', label: 'Thumbnail Image', type: 'image' },
       { path: 'resultImage', label: 'Result Image', type: 'image' },
       { path: 'beforeImage', label: 'Before Image', type: 'image' },
       { path: 'videoUrl', label: 'Video URL' },
-      { path: 'price', label: 'Sale Price' },
-      { path: 'compareAtPrice', label: 'Original Price (optional)', placeholder: 'Must be higher than sale price' },
+      { path: 'price', label: 'Price / Free Crossed Price', helper: 'For PREMIUM, this is the checkout price. For FREE, this can be the crossed-out value shown before Free.' },
+      { path: 'compareAtPrice', label: 'Original Price (optional)', placeholder: 'Must be higher than sale price', helper: 'Optional discount anchor. For FREE prompts, use this only if Price is 0 or blank.' },
       { path: 'currency', label: 'Currency', type: 'select', options: ['INR', 'USD', 'AED', 'EUR'] },
       { path: 'purchaseUrl', label: 'Purchase URL' },
-      { path: 'storagePath', label: 'Secure Product File', type: 'file' },
+      { path: 'storagePath', label: 'Prompt PDF File (optional)', type: 'file', accept: 'application/pdf,.pdf', helper: 'Upload a PDF when you want users to download a file instead of copying text.' },
       { path: 'workflowStep', label: 'Workflow Step' },
       { path: 'parameters.engine', label: 'Engine' },
       { path: 'parameters.aspectRatio', label: 'Aspect Ratio' },
@@ -298,6 +299,8 @@ const validateProductPricing = (collection: string, item: any) => {
   return '';
 };
 
+const hasAttachedPromptFile = (item: any) => Boolean(String(item?.storagePath || item?.pdfStoragePath || item?.pdfUrl || '').trim());
+
 interface CrudPageProps {
   collection: keyof typeof configs;
 }
@@ -326,6 +329,8 @@ export default function CrudPage({ collection }: CrudPageProps) {
   };
 
   const supportsDirectCheckout = (item: any) => isCheckoutProduct(config.collection, item);
+  const isAiPromptCollection = config.collection === 'aiPrompts';
+  const promptHasPdf = isAiPromptCollection && hasAttachedPromptFile(formData);
 
   const openCreate = () => {
     setEditingId(null);
@@ -495,6 +500,20 @@ export default function CrudPage({ collection }: CrudPageProps) {
                           {item.category}
                         </span>
                       )}
+                      {config.collection === 'aiPrompts' && (
+                        <>
+                          <span className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase ${
+                            String(item.type).toUpperCase() === 'FREE'
+                              ? 'bg-emerald-400/10 text-emerald-300'
+                              : 'bg-[#bfa37c]/10 text-[#bfa37c]'
+                          }`}>
+                            {String(item.type || 'FREE').toUpperCase()}
+                          </span>
+                          <span className="rounded bg-sky-400/10 px-2 py-0.5 text-[10px] font-bold uppercase text-sky-300">
+                            {hasAttachedPromptFile(item) ? 'PDF Download' : 'Text Copy'}
+                          </span>
+                        </>
+                      )}
                       {item.published === false ? (
                         <span className="rounded bg-yellow-400/10 px-2 py-0.5 text-[10px] font-bold uppercase text-yellow-300">Draft</span>
                       ) : (
@@ -572,11 +591,21 @@ export default function CrudPage({ collection }: CrudPageProps) {
             )}
           </div>
 
+          {isAiPromptCollection && (
+            <div className="mb-5 rounded-xl border border-[#bfa37c]/25 bg-[#bfa37c]/10 p-4 text-xs leading-relaxed text-[#d7c4a7]">
+              <div className="font-bold uppercase tracking-[0.16em] text-[#f0d5aa]">AI Prompt Delivery Rules</div>
+              <div className="mt-2 text-[#d4d4ce]">
+                Set <strong>Access Type</strong> to FREE for direct access. If a PDF is attached, users download the PDF and the text prompt is hidden. If no PDF is attached, users can copy the text prompt. PREMIUM always redirects to checkout.
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {config.fields.map((field) => {
               const value = getValue(formData, field.path);
               const commonClass = 'w-full rounded-lg border border-white/10 bg-[#0e1015] px-4 py-2.5 text-sm text-white outline-none transition-colors focus:border-[#bfa37c]';
               const wide = field.type === 'textarea' || field.type === 'list' || field.type === 'images' || field.type === 'image' || field.type === 'file' || field.path.toLowerCase().includes('description') || field.path.toLowerCase().includes('prompt');
+              const disableTextPrompt = isAiPromptCollection && field.path === 'fullPrompt' && promptHasPdf;
 
               return (
                 <div key={field.path} className={`space-y-2 ${wide ? 'md:col-span-2' : ''}`}>
@@ -593,14 +622,23 @@ export default function CrudPage({ collection }: CrudPageProps) {
                   ) : (
                     <>
                       <label className="block text-xs font-bold uppercase tracking-wider text-[#9a9da8]">{field.label}</label>
+                      {field.helper && (
+                        <p className="text-[11px] leading-relaxed text-[#747783]">{field.helper}</p>
+                      )}
                       {field.type === 'textarea' || field.type === 'list' || field.type === 'images' ? (
                         <div className="space-y-3">
+                          {disableTextPrompt && (
+                            <div className="rounded-lg border border-sky-400/20 bg-sky-400/10 px-3 py-2 text-xs text-sky-200">
+                              A PDF is attached, so this text prompt will not be shown publicly. Remove the PDF file below if you want users to copy text instead.
+                            </div>
+                          )}
                           <textarea
                             rows={field.type === 'list' || field.type === 'images' ? 5 : 4}
                             value={formatFieldValue(value, field)}
                             onChange={(event) => updateField(field, event.target.value)}
                             placeholder={field.type === 'list' || field.type === 'images' ? 'One item per line' : field.placeholder}
-                            className={`${commonClass} resize-none leading-relaxed`}
+                            disabled={disableTextPrompt}
+                            className={`${commonClass} resize-none leading-relaxed disabled:cursor-not-allowed disabled:border-sky-400/20 disabled:bg-[#181a24] disabled:text-[#747783]`}
                           />
                           {field.type === 'images' && (
                             <div className="flex flex-wrap items-center gap-3">
@@ -627,7 +665,7 @@ export default function CrudPage({ collection }: CrudPageProps) {
                             type="text"
                             value={value ?? ''}
                             onChange={(event) => updateField(field, event.target.value)}
-                            placeholder={field.type === 'image' ? 'Paste an image URL or upload below' : 'Paste a file URL or upload below'}
+                            placeholder={field.placeholder || (field.type === 'image' ? 'Paste an image URL or upload below' : 'Paste a file URL or upload below')}
                             className={commonClass}
                           />
                           <div className="flex flex-wrap items-center gap-3">
@@ -650,10 +688,24 @@ export default function CrudPage({ collection }: CrudPageProps) {
                                   Open attached file
                                 </a>
                               ) : (
-                                <span className="text-xs text-emerald-300">Private file saved for paid delivery: {value}</span>
+                                <span className="text-xs text-emerald-300">Private file attached: {value}</span>
                               )
                             )}
+                            {field.type === 'file' && typeof value === 'string' && value && (
+                              <button
+                                type="button"
+                                onClick={() => updateField(field, '')}
+                                className="rounded-lg border border-red-400/20 px-3 py-2 text-xs font-bold uppercase tracking-wider text-red-300 transition-colors hover:bg-red-400/10 hover:text-red-200"
+                              >
+                                Remove File
+                              </button>
+                            )}
                           </div>
+                          {isAiPromptCollection && field.path === 'storagePath' && (
+                            <div className="rounded-lg border border-white/10 bg-[#0e1015] px-3 py-2 text-[11px] leading-relaxed text-[#9a9da8]">
+                              Current delivery mode: <span className="font-bold text-white">{promptHasPdf ? 'PDF download' : 'Text copy'}</span>
+                            </div>
+                          )}
                         </div>
                       ) : field.type === 'select' ? (
                         <select

@@ -521,13 +521,13 @@ export const AiArchitecture: React.FC<AiArchitectureProps> = ({
                 </div>
                 <div className="rounded-xl border border-white/10 bg-[#090a0f] p-4">
                   <div className="text-[10px] font-sans font-bold uppercase tracking-wider text-[#c5a880]">Description</div>
-                  <p className="mt-2 text-xs leading-relaxed text-[#d4d4ce]">
+                  <p className="mt-2 max-h-28 overflow-y-auto pr-2 text-xs leading-relaxed text-[#d4d4ce] custom-scrollbar">
                     {selectedPromptModal.previewText || selectedPromptModal.fullPrompt}
                   </p>
                   {selectedPromptModal.type === 'FREE' && selectedPromptModal.fullPrompt !== selectedPromptModal.previewText && (
                     <div className="mt-4 border-t border-white/10 pt-4">
                       <div className="text-[10px] font-sans font-bold uppercase tracking-wider text-[#c5a880]">Prompt</div>
-                      <p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-[#d4d4ce]">
+                      <p className="mt-2 max-h-40 overflow-y-auto whitespace-pre-wrap pr-2 text-xs leading-relaxed text-[#d4d4ce] custom-scrollbar">
                         {selectedPromptModal.fullPrompt}
                       </p>
                     </div>

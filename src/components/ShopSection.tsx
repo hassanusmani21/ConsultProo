@@ -620,13 +620,13 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
 
                   <div className="rounded-xl border border-[#12141a]/10 bg-[#faf8f5] p-4">
                     <div className="text-[10px] font-sans font-bold uppercase tracking-wider text-[#9e825d]">Description</div>
-                    <p className="mt-2 text-xs leading-relaxed text-[#4a4d57]">
+                    <p className="mt-2 max-h-28 overflow-y-auto pr-2 text-xs leading-relaxed text-[#4a4d57] custom-scrollbar">
                       {selectedPrompt.previewText || selectedPrompt.fullPrompt}
                     </p>
                     {selectedPrompt.type === 'FREE' && selectedPrompt.fullPrompt !== selectedPrompt.previewText && (
                       <div className="mt-4 border-t border-[#12141a]/10 pt-4">
                         <div className="text-[10px] font-sans font-bold uppercase tracking-wider text-[#9e825d]">Prompt</div>
-                        <p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-[#4a4d57]">
+                        <p className="mt-2 max-h-40 overflow-y-auto whitespace-pre-wrap pr-2 text-xs leading-relaxed text-[#4a4d57] custom-scrollbar">
                           {selectedPrompt.fullPrompt}
                         </p>
                       </div>

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Check, Copy, Edit2, ExternalLink, FileUp, Plus, RotateCcw, Trash2, UploadCloud, X } from 'lucide-react';
+import { Check, Copy, Edit2, ExternalLink, FileUp, LoaderCircle, Plus, RotateCcw, Trash2, UploadCloud, X } from 'lucide-react';
 import { useData } from '../../data/DataContext';
 import { supabase } from '../../lib/supabase';
 import { isCheckoutProduct, productCheckoutPath } from '../../utils/productLinks';
@@ -295,6 +295,15 @@ interface EditorDraft {
   formData: any;
 }
 
+interface UploadStatus {
+  fieldPath: string;
+  state: 'uploading' | 'success' | 'error';
+  completed: number;
+  total: number;
+  fileName?: string;
+  message: string;
+}
+
 const draftKey = (collection: string) => `consultproo-admin-draft:${collection}`;
 
 const loadDraft = (collection: string): EditorDraft | null => {
@@ -357,6 +366,7 @@ export default function CrudPage({ collection }: CrudPageProps) {
   const [saveState, setSaveState] = useState<'idle' | 'saved' | 'error'>('idle');
   const [isDirty, setIsDirty] = useState(Boolean(initialDraft));
   const [copiedLinkId, setCopiedLinkId] = useState<string | null>(null);
+  const [uploadStatus, setUploadStatus] = useState<UploadStatus | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
   const showNotice = (message: string, kind: 'success' | 'error' | 'info' = 'info') => {
@@ -387,6 +397,12 @@ export default function CrudPage({ collection }: CrudPageProps) {
     const timeout = window.setTimeout(() => setSaveState('idle'), 2500);
     return () => window.clearTimeout(timeout);
   }, [saveState]);
+
+  useEffect(() => {
+    if (uploadStatus?.state !== 'success') return;
+    const timeout = window.setTimeout(() => setUploadStatus(null), 5000);
+    return () => window.clearTimeout(timeout);
+  }, [uploadStatus]);
 
   const preserveEditorScroll = () => {
     const scroller = formRef.current?.closest<HTMLElement>('[data-admin-scroll-container]');
@@ -445,21 +461,31 @@ export default function CrudPage({ collection }: CrudPageProps) {
     const selectedFiles = Array.from(files ?? []);
     if (selectedFiles.length === 0) return;
     const restoreScroll = preserveEditorScroll();
+    const setUploadState = (state: UploadStatus['state'], completed: number, message: string, fileName?: string) => {
+      setUploadStatus({ fieldPath: field.path, state, completed, total: selectedFiles.length, message, fileName });
+    };
 
     const maxUploadBytes = field.type === 'file' ? MAX_PRODUCT_FILE_UPLOAD_BYTES : MAX_ASSET_UPLOAD_BYTES;
     if (selectedFiles.some((file) => file.size > maxUploadBytes)) {
       const maxSizeLabel = field.type === 'file' ? '100 MB' : '3 MB';
-      showNotice(`Each file must be smaller than ${maxSizeLabel}. Use compressed files or paste a hosted URL instead.`, 'error');
+      const message = `Upload stopped: each ${field.type === 'file' ? 'file' : 'image'} must be smaller than ${maxSizeLabel}.`;
+      setUploadState('error', 0, message);
+      showNotice(`${message} Use a smaller file or paste a hosted URL instead.`, 'error');
       restoreScroll();
       return;
     }
 
     try {
+      setUploadState('uploading', 0, `Preparing ${selectedFiles.length} file${selectedFiles.length === 1 ? '' : 's'} for upload…`);
       const itemId = formData.id || editingId || crypto.randomUUID();
       let uploadedValues: string[];
 
       if (!supabase) {
-        uploadedValues = await Promise.all(selectedFiles.map(readFileAsDataUrl));
+        uploadedValues = [];
+        for (const [index, file] of selectedFiles.entries()) {
+          setUploadState('uploading', index, `Uploading file ${index + 1} of ${selectedFiles.length}: ${file.name}`, file.name);
+          uploadedValues.push(await readFileAsDataUrl(file));
+        }
       } else {
         const isPrivateProductFile = field.type === 'file';
         const bucket = isPrivateProductFile ? 'product-files' : 'cms-assets';
@@ -468,7 +494,8 @@ export default function CrudPage({ collection }: CrudPageProps) {
           : `cms/${collection}`;
 
         uploadedValues = [];
-        for (const file of selectedFiles) {
+        for (const [index, file] of selectedFiles.entries()) {
+          setUploadState('uploading', index, `Uploading file ${index + 1} of ${selectedFiles.length}: ${file.name}`, file.name);
           const suffix = isPrivateProductFile
             ? getSafeFileExtension(file.name)
             : `${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '-')}`;
@@ -493,9 +520,13 @@ export default function CrudPage({ collection }: CrudPageProps) {
         return { ...next, id: current.id || itemId };
       });
       setIsDirty(true);
-      showNotice(`${selectedFiles.length} file${selectedFiles.length === 1 ? '' : 's'} uploaded. Save to publish the change.`, 'success');
+      const message = `${selectedFiles.length} file${selectedFiles.length === 1 ? '' : 's'} uploaded successfully. Save the record to publish the change.`;
+      setUploadState('success', selectedFiles.length, message);
+      showNotice(message, 'success');
     } catch (error) {
-      showNotice(error instanceof Error ? error.message : 'The file could not be uploaded.', 'error');
+      const message = error instanceof Error ? error.message : 'The file could not be uploaded.';
+      setUploadState('error', 0, message);
+      showNotice(message, 'error');
     } finally {
       restoreScroll();
     }
@@ -689,6 +720,7 @@ export default function CrudPage({ collection }: CrudPageProps) {
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {config.fields.map((field) => {
               const value = getValue(formData, field.path);
+              const fieldUploadStatus = uploadStatus?.fieldPath === field.path ? uploadStatus : null;
               const commonClass = 'w-full rounded-lg border border-white/10 bg-[#0e1015] px-4 py-2.5 text-sm text-white outline-none transition-colors focus:border-[#bfa37c]';
               const wide = field.type === 'textarea' || field.type === 'list' || field.type === 'images' || field.type === 'image' || field.type === 'file' || field.path.toLowerCase().includes('description') || field.path.toLowerCase().includes('prompt');
 
@@ -707,6 +739,28 @@ export default function CrudPage({ collection }: CrudPageProps) {
                   ) : (
                     <>
                       <label className="block text-xs font-bold uppercase tracking-wider text-[#9a9da8]">{field.label}</label>
+                      {fieldUploadStatus && (
+                        <div
+                          role={fieldUploadStatus.state === 'error' ? 'alert' : 'status'}
+                          aria-live="polite"
+                          className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs ${
+                            fieldUploadStatus.state === 'error'
+                              ? 'border-red-400/30 bg-red-950/40 text-red-200'
+                              : fieldUploadStatus.state === 'success'
+                                ? 'border-emerald-400/30 bg-emerald-950/40 text-emerald-200'
+                                : 'border-[#bfa37c]/30 bg-[#bfa37c]/10 text-[#e2cfb0]'
+                          }`}
+                        >
+                          {fieldUploadStatus.state === 'uploading' ? (
+                            <LoaderCircle className="h-4 w-4 shrink-0 animate-spin" />
+                          ) : fieldUploadStatus.state === 'success' ? (
+                            <Check className="h-4 w-4 shrink-0" />
+                          ) : (
+                            <X className="h-4 w-4 shrink-0" />
+                          )}
+                          <span>{fieldUploadStatus.message}</span>
+                        </div>
+                      )}
                       {field.type === 'textarea' || field.type === 'list' || field.type === 'images' ? (
                         <div className="space-y-3">
                           <textarea
@@ -725,6 +779,7 @@ export default function CrudPage({ collection }: CrudPageProps) {
                                   type="file"
                                   accept="image/*"
                                   multiple
+                                  disabled={uploadStatus?.state === 'uploading'}
                                   onChange={(event) => {
                                     const files = event.currentTarget.files;
                                     event.currentTarget.value = '';
@@ -756,6 +811,7 @@ export default function CrudPage({ collection }: CrudPageProps) {
                               <input
                                 type="file"
                                 accept={field.accept || (field.type === 'image' ? 'image/*' : '*/*')}
+                                disabled={uploadStatus?.state === 'uploading'}
                                 onChange={(event) => {
                                   const files = event.currentTarget.files;
                                   event.currentTarget.value = '';

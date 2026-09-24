@@ -140,7 +140,7 @@ export default function AdminLayout() {
 
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden print:h-auto print:overflow-visible print:bg-white">
-        <div className="flex-1 overflow-y-auto p-4 sm:p-8 pt-24 lg:pt-8 custom-scrollbar print:overflow-visible print:p-0">
+        <div data-admin-scroll-container className="flex-1 overflow-y-auto p-4 sm:p-8 pt-24 lg:pt-8 custom-scrollbar print:overflow-visible print:p-0" style={{ overflowAnchor: 'none' }}>
           <div className="max-w-5xl mx-auto">
             <Outlet />
           </div>

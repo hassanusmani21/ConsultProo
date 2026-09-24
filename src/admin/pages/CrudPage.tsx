@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, Copy, Edit2, ExternalLink, FileUp, Plus, RotateCcw, Trash2, UploadCloud, X } from 'lucide-react';
 import { useData } from '../../data/DataContext';
 import { supabase } from '../../lib/supabase';
@@ -132,29 +132,14 @@ const configs: Record<string, CollectionConfig> = {
   },
   aiPrompts: {
     title: 'AI Prompts',
-    description: 'Manage prompt cards, descriptions, full prompt text, and pricing.',
+    description: 'Create prompt entries with only the content and delivery file your visitors need.',
     collection: 'aiPrompts',
     fields: [
       { path: 'code', label: 'Prompt Code' },
       { path: 'title', label: 'Title' },
-      { path: 'category', label: 'Category', type: 'select', options: ['ARCHITECTURE', 'INTERIOR DESIGN', 'RENOVATION', 'EXTERIOR', 'MATERIALS', 'LIGHTING', 'VISUALIZATION'] },
-      { path: 'type', label: 'Type', type: 'select', options: ['FREE', 'PREMIUM'] },
-      { path: 'previewText', label: 'Preview Text', type: 'textarea' },
-      { path: 'fullPrompt', label: 'Full Prompt', type: 'textarea' },
-      { path: 'thumbnail', label: 'Thumbnail Image', type: 'image' },
-      { path: 'resultImage', label: 'Result Image', type: 'image' },
-      { path: 'beforeImage', label: 'Before Image', type: 'image' },
-      { path: 'videoUrl', label: 'Video URL' },
-      { path: 'price', label: 'Sale Price' },
-      { path: 'compareAtPrice', label: 'Original Price (optional)', placeholder: 'Must be higher than sale price' },
-      { path: 'currency', label: 'Currency', type: 'select', options: ['INR', 'USD', 'AED', 'EUR', 'GBP', 'SGD'] },
-      { path: 'purchaseUrl', label: 'Purchase URL' },
-      { path: 'storagePath', label: 'Secure Product File', type: 'file' },
-      { path: 'workflowStep', label: 'Workflow Step' },
-      { path: 'parameters.lighting', label: 'Lighting' },
-      { path: 'parameters.materials', label: 'Materials' },
-      { path: 'featured', label: 'Featured', type: 'checkbox' },
-      { path: 'published', label: 'Published', type: 'checkbox' },
+      { path: 'previewText', label: 'Description', type: 'textarea' },
+      { path: 'fullPrompt', label: 'Prompt Text', type: 'textarea' },
+      { path: 'storagePath', label: 'Prompt PDF', type: 'file', accept: 'application/pdf,.pdf' },
     ],
   },
   latestContent: {
@@ -291,6 +276,30 @@ const emptyItemFor = (config: CollectionConfig) => {
   }, {});
 };
 
+const newItemFor = (config: CollectionConfig) => {
+  const item = { ...emptyItemFor(config), id: crypto.randomUUID() };
+  if (config.collection === 'aiPrompts') {
+    return { ...item, category: 'ARCHITECTURE', type: 'FREE', currency: 'INR', published: true };
+  }
+  return item;
+};
+
+interface EditorDraft {
+  editingId: string | null;
+  formData: any;
+}
+
+const draftKey = (collection: string) => `consultproo-admin-draft:${collection}`;
+
+const loadDraft = (collection: string): EditorDraft | null => {
+  try {
+    const value = window.sessionStorage.getItem(draftKey(collection));
+    return value ? JSON.parse(value) : null;
+  } catch {
+    return null;
+  }
+};
+
 const formatFieldValue = (value: any, field: FieldConfig) => {
   if (field.type === 'list' || field.type === 'images') return Array.isArray(value) ? value.join('\n') : '';
   return value ?? '';
@@ -333,11 +342,55 @@ export default function CrudPage({ collection }: CrudPageProps) {
   const { data, addItem, updateItem, deleteItem } = useData();
   const config = configs[collection];
   const items = useMemo(() => data[config.collection] ?? [], [data, config.collection]);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [formData, setFormData] = useState<any>(() => ({ ...emptyItemFor(config), id: crypto.randomUUID() }));
+  const initialDraft = loadDraft(config.collection);
+  const [editingId, setEditingId] = useState<string | null>(() => initialDraft?.editingId ?? null);
+  const [formData, setFormData] = useState<any>(() => initialDraft?.formData ?? newItemFor(config));
   const [notice, setNotice] = useState('');
+  const [noticeKind, setNoticeKind] = useState<'success' | 'error' | 'info'>('info');
   const [isSaving, setIsSaving] = useState(false);
+  const [saveState, setSaveState] = useState<'idle' | 'saved' | 'error'>('idle');
+  const [isDirty, setIsDirty] = useState(Boolean(initialDraft));
   const [copiedLinkId, setCopiedLinkId] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  const showNotice = (message: string, kind: 'success' | 'error' | 'info' = 'info') => {
+    setNotice(message);
+    setNoticeKind(kind);
+  };
+
+  const clearDraft = () => {
+    window.sessionStorage.removeItem(draftKey(config.collection));
+    setIsDirty(false);
+  };
+
+  useEffect(() => {
+    const draft = loadDraft(config.collection);
+    setEditingId(draft?.editingId ?? null);
+    setFormData(draft?.formData ?? newItemFor(config));
+    setIsDirty(Boolean(draft));
+    setSaveState('idle');
+  }, [config]);
+
+  useEffect(() => {
+    if (!isDirty) return;
+    window.sessionStorage.setItem(draftKey(config.collection), JSON.stringify({ editingId, formData }));
+  }, [config.collection, editingId, formData, isDirty]);
+
+  useEffect(() => {
+    if (saveState !== 'saved') return;
+    const timeout = window.setTimeout(() => setSaveState('idle'), 2500);
+    return () => window.clearTimeout(timeout);
+  }, [saveState]);
+
+  const preserveEditorScroll = () => {
+    const scroller = formRef.current?.closest<HTMLElement>('[data-admin-scroll-container]');
+    const scrollTop = scroller?.scrollTop;
+    return () => {
+      if (scroller && typeof scrollTop === 'number') {
+        window.requestAnimationFrame(() => { scroller.scrollTop = scrollTop; });
+      }
+    };
+  };
 
   const copyProductLink = async (item: any) => {
     const path = productCheckoutPath(item.id);
@@ -345,10 +398,10 @@ export default function CrudPage({ collection }: CrudPageProps) {
     try {
       await navigator.clipboard.writeText(url);
       setCopiedLinkId(item.id);
-      setNotice(`Direct checkout link copied: ${url}`);
+      showNotice(`Direct checkout link copied: ${url}`, 'success');
       window.setTimeout(() => setCopiedLinkId((current) => current === item.id ? null : current), 2200);
     } catch {
-      setNotice(`Copy failed. Use this direct checkout link: ${url}`);
+      showNotice(`Copy failed. Use this direct checkout link: ${url}`, 'error');
     }
   };
 
@@ -356,12 +409,16 @@ export default function CrudPage({ collection }: CrudPageProps) {
 
   const openCreate = () => {
     setEditingId(null);
-    setFormData({ ...emptyItemFor(config), id: crypto.randomUUID() });
+    setFormData(newItemFor(config));
+    clearDraft();
+    setSaveState('idle');
   };
 
   const openEdit = (item: any) => {
     setEditingId(item.id);
     setFormData(item);
+    clearDraft();
+    setSaveState('idle');
   };
 
   const updateField = (field: FieldConfig, rawValue: any) => {
@@ -374,16 +431,20 @@ export default function CrudPage({ collection }: CrudPageProps) {
     }
     if (field.type === 'checkbox') value = Boolean(rawValue);
     setFormData((current: any) => setValue(current, field.path, value));
+    setIsDirty(true);
+    setSaveState('idle');
   };
 
   const handleAssetUpload = async (field: FieldConfig, files: FileList | File[] | null) => {
     const selectedFiles = Array.from(files ?? []);
     if (selectedFiles.length === 0) return;
+    const restoreScroll = preserveEditorScroll();
 
     const maxUploadBytes = field.type === 'file' ? MAX_PRODUCT_FILE_UPLOAD_BYTES : MAX_ASSET_UPLOAD_BYTES;
     if (selectedFiles.some((file) => file.size > maxUploadBytes)) {
       const maxSizeLabel = field.type === 'file' ? '100 MB' : '3 MB';
-      setNotice(`Each file must be smaller than ${maxSizeLabel}. Use compressed files or paste a hosted URL instead.`);
+      showNotice(`Each file must be smaller than ${maxSizeLabel}. Use compressed files or paste a hosted URL instead.`, 'error');
+      restoreScroll();
       return;
     }
 
@@ -425,32 +486,40 @@ export default function CrudPage({ collection }: CrudPageProps) {
         const next = setValue(current, field.path, nextValue);
         return { ...next, id: current.id || itemId };
       });
-      setNotice(`${selectedFiles.length} file${selectedFiles.length === 1 ? '' : 's'} uploaded. Save the record to publish the change.`);
+      setIsDirty(true);
+      showNotice(`${selectedFiles.length} file${selectedFiles.length === 1 ? '' : 's'} uploaded. Save to publish the change.`, 'success');
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'The file could not be uploaded.');
+      showNotice(error instanceof Error ? error.message : 'The file could not be uploaded.', 'error');
+    } finally {
+      restoreScroll();
     }
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setIsSaving(true);
+    setSaveState('idle');
     try {
       const pricingError = validateProductPricing(config.collection, formData);
       if (pricingError) {
-        setNotice(pricingError);
+        showNotice(pricingError, 'error');
+        setSaveState('error');
         return;
       }
 
       if (editingId) {
         await updateItem(config.collection, editingId, formData);
-        setNotice(`${config.title} item updated in Supabase.`);
+        showNotice(`${config.title} item updated and published.`, 'success');
       } else {
         await addItem(config.collection, formData);
-        setNotice(`${config.title} item created in Supabase.`);
-        setFormData({ ...emptyItemFor(config), id: crypto.randomUUID() });
+        showNotice(`${config.title} item created and published.`, 'success');
+        setFormData(newItemFor(config));
       }
+      clearDraft();
+      setSaveState('saved');
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'The record could not be saved.');
+      showNotice(error instanceof Error ? error.message : 'The record could not be saved.', 'error');
+      setSaveState('error');
     } finally {
       setIsSaving(false);
     }
@@ -461,9 +530,9 @@ export default function CrudPage({ collection }: CrudPageProps) {
     try {
       await deleteItem(config.collection, item.id);
       if (editingId === item.id) openCreate();
-      setNotice(`${config.title} item deleted from Supabase.`);
+      showNotice(`${config.title} item deleted from Supabase.`, 'success');
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'The record could not be deleted.');
+      showNotice(error instanceof Error ? error.message : 'The record could not be deleted.', 'error');
     }
   };
 
@@ -485,9 +554,19 @@ export default function CrudPage({ collection }: CrudPageProps) {
       </div>
 
       {notice && (
-        <div className="flex items-center justify-between rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-300">
+        <div
+          role="status"
+          aria-live="polite"
+          className={`fixed bottom-4 right-4 z-[60] flex max-w-[calc(100vw-2rem)] items-center justify-between gap-4 rounded-lg border px-4 py-3 text-sm shadow-2xl backdrop-blur ${
+            noticeKind === 'error'
+              ? 'border-red-400/30 bg-red-950/95 text-red-200'
+              : noticeKind === 'success'
+                ? 'border-emerald-400/30 bg-emerald-950/95 text-emerald-200'
+                : 'border-[#bfa37c]/30 bg-[#14161f]/95 text-white'
+          }`}
+        >
           <span>{notice}</span>
-          <button type="button" onClick={() => setNotice('')} className="text-emerald-200 hover:text-white">
+          <button type="button" onClick={() => setNotice('')} className="shrink-0 hover:text-white" aria-label="Dismiss message">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -583,7 +662,7 @@ export default function CrudPage({ collection }: CrudPageProps) {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="rounded-2xl border border-white/10 bg-[#14161f] p-5">
+        <form ref={formRef} onSubmit={handleSubmit} className="rounded-2xl border border-white/10 bg-[#14161f] p-5">
           <div className="mb-5 flex items-center justify-between gap-4 border-b border-white/10 pb-4">
             <div>
               <div className="text-lg font-bold text-white">{editingId ? 'Edit Record' : 'Create Record'}</div>
@@ -640,7 +719,12 @@ export default function CrudPage({ collection }: CrudPageProps) {
                                   type="file"
                                   accept="image/*"
                                   multiple
-                                  onChange={(event) => handleAssetUpload(field, event.target.files)}
+                                  onChange={(event) => {
+                                    const files = event.currentTarget.files;
+                                    event.currentTarget.value = '';
+                                    event.currentTarget.blur();
+                                    void handleAssetUpload(field, files);
+                                  }}
                                   className="sr-only"
                                 />
                               </label>
@@ -666,7 +750,12 @@ export default function CrudPage({ collection }: CrudPageProps) {
                               <input
                                 type="file"
                                 accept={field.accept || (field.type === 'image' ? 'image/*' : '*/*')}
-                                onChange={(event) => handleAssetUpload(field, event.target.files)}
+                                onChange={(event) => {
+                                  const files = event.currentTarget.files;
+                                  event.currentTarget.value = '';
+                                  event.currentTarget.blur();
+                                  void handleAssetUpload(field, files);
+                                }}
                                 className="sr-only"
                               />
                             </label>
@@ -710,7 +799,7 @@ export default function CrudPage({ collection }: CrudPageProps) {
             })}
           </div>
 
-          <div className="mt-6 flex justify-end gap-3 border-t border-white/10 pt-5">
+          <div className="sticky bottom-0 mt-6 flex justify-end gap-3 border-t border-white/10 bg-[#14161f] pt-5">
             <button
               type="button"
               onClick={openCreate}
@@ -720,10 +809,17 @@ export default function CrudPage({ collection }: CrudPageProps) {
             </button>
             <button
               type="submit"
-              className="flex items-center gap-2 rounded-xl bg-[#bfa37c] px-5 py-2.5 text-sm font-bold uppercase tracking-wider text-[#0e1015] transition-colors hover:bg-[#d6be9c]"
+              disabled={isSaving}
+              className={`flex min-w-28 items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold uppercase tracking-wider transition-colors disabled:cursor-wait ${
+                saveState === 'saved'
+                  ? 'bg-emerald-400 text-[#0e1015]'
+                  : saveState === 'error'
+                    ? 'bg-red-400 text-[#0e1015]'
+                    : 'bg-[#bfa37c] text-[#0e1015] hover:bg-[#d6be9c]'
+              }`}
             >
               <Check className="h-4 w-4" />
-              <span>{editingId ? 'Update' : 'Create'}</span>
+              <span>{isSaving ? 'Saving...' : saveState === 'saved' ? 'Saved' : saveState === 'error' ? 'Try Again' : editingId ? 'Update' : 'Create'}</span>
             </button>
           </div>
         </form>

@@ -99,15 +99,17 @@ export default function DirectPromptPage() {
               </div>
 
               <div className="grid grid-cols-1 items-start gap-6 p-5 sm:grid-cols-12 sm:p-8">
-                <div className="sm:col-span-5 aspect-[16/12] overflow-hidden rounded-xl border border-[#12141a]/10 bg-[#ebe7df] shadow-md">
+                <div className="sm:col-span-4">
+                  <div className="mx-auto aspect-[9/16] w-full max-w-[300px] overflow-hidden rounded-xl border border-[#12141a]/10 bg-[#ebe7df] shadow-md">
                   <img
-                    src={prompt.resultImage}
+                    src={prompt.resultImage || prompt.thumbnail}
                     alt={prompt.title}
-                    className="h-full w-full object-contain"
+                    className="h-full w-full object-cover"
                   />
+                  </div>
                 </div>
 
-                <div className="space-y-4 sm:col-span-7">
+                <div className="space-y-4 sm:col-span-8">
                   <div>
                     <h1 className="text-2xl font-sans font-bold text-[#12141a] sm:text-3xl">
                       {prompt.title}
@@ -119,15 +121,18 @@ export default function DirectPromptPage() {
                     <p className="mt-2 max-h-28 overflow-y-auto pr-2 text-xs leading-relaxed text-[#4a4d57] custom-scrollbar">
                       {prompt.previewText || prompt.fullPrompt}
                     </p>
-                    {prompt.type === 'FREE' && prompt.fullPrompt !== prompt.previewText && (
-                      <div className="mt-4 border-t border-[#12141a]/10 pt-4">
-                        <div className="text-[10px] font-sans font-bold uppercase tracking-wider text-[#9e825d]">Prompt</div>
-                        <p className="mt-2 max-h-40 overflow-y-auto whitespace-pre-wrap pr-2 text-xs leading-relaxed text-[#4a4d57] custom-scrollbar">
-                          {prompt.fullPrompt}
-                        </p>
-                      </div>
-                    )}
                   </div>
+                  {prompt.type === 'FREE' && prompt.fullPrompt !== prompt.previewText && (
+                    <div className="rounded-xl border border-[#12141a] bg-[#12141a] p-4 shadow-lg shadow-[#12141a]/10">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="text-[10px] font-sans font-bold uppercase tracking-wider text-[#d8be96]">Prompt</div>
+                        <div className="text-[10px] font-sans uppercase tracking-wider text-white/45">Ready to copy</div>
+                      </div>
+                      <p className="mt-3 max-h-44 overflow-y-auto whitespace-pre-wrap pr-2 text-xs leading-relaxed text-white/85 custom-scrollbar">
+                          {prompt.fullPrompt}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 

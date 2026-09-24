@@ -137,6 +137,8 @@ const configs: Record<string, CollectionConfig> = {
     fields: [
       { path: 'code', label: 'Prompt Code' },
       { path: 'title', label: 'Title' },
+      { path: 'thumbnail', label: 'Website Thumbnail (16:9)', type: 'image' },
+      { path: 'resultImage', label: 'Prompt Detail Image (9:16)', type: 'image' },
       { path: 'previewText', label: 'Description', type: 'textarea' },
       { path: 'fullPrompt', label: 'Prompt Text', type: 'textarea' },
       { path: 'storagePath', label: 'Prompt PDF', type: 'file', accept: 'application/pdf,.pdf' },

@@ -487,11 +487,11 @@ export const AiArchitecture: React.FC<AiArchitectureProps> = ({
                 </button>
               </div>
 
-              <div className="relative aspect-[16/9] rounded-xl overflow-hidden bg-[#090a0f] border border-white/10">
+              <div className="relative mx-auto aspect-[9/16] w-full max-w-[300px] overflow-hidden rounded-xl border border-white/10 bg-[#090a0f]">
                 <img
-                  src={selectedPromptModal.resultImage}
+                  src={selectedPromptModal.resultImage || selectedPromptModal.thumbnail}
                   alt={selectedPromptModal.title}
-                  className="w-full h-full object-contain"
+                  className="h-full w-full object-cover"
                 />
               </div>
 
@@ -524,15 +524,18 @@ export const AiArchitecture: React.FC<AiArchitectureProps> = ({
                   <p className="mt-2 max-h-28 overflow-y-auto pr-2 text-xs leading-relaxed text-[#d4d4ce] custom-scrollbar">
                     {selectedPromptModal.previewText || selectedPromptModal.fullPrompt}
                   </p>
-                  {selectedPromptModal.type === 'FREE' && selectedPromptModal.fullPrompt !== selectedPromptModal.previewText && (
-                    <div className="mt-4 border-t border-white/10 pt-4">
-                      <div className="text-[10px] font-sans font-bold uppercase tracking-wider text-[#c5a880]">Prompt</div>
-                      <p className="mt-2 max-h-40 overflow-y-auto whitespace-pre-wrap pr-2 text-xs leading-relaxed text-[#d4d4ce] custom-scrollbar">
-                        {selectedPromptModal.fullPrompt}
-                      </p>
-                    </div>
-                  )}
                 </div>
+                {selectedPromptModal.type === 'FREE' && selectedPromptModal.fullPrompt !== selectedPromptModal.previewText && (
+                  <div className="rounded-xl border border-[#c5a880]/30 bg-[#0d0f15] p-4 shadow-lg shadow-black/20">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-[10px] font-sans font-bold uppercase tracking-wider text-[#c5a880]">Prompt</div>
+                      <div className="text-[10px] font-sans uppercase tracking-wider text-white/40">Ready to copy</div>
+                    </div>
+                    <p className="mt-3 max-h-44 overflow-y-auto whitespace-pre-wrap pr-2 text-xs leading-relaxed text-[#e8e9ed] custom-scrollbar">
+                        {selectedPromptModal.fullPrompt}
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div className="flex flex-col justify-end gap-3 pt-2 sm:flex-row">

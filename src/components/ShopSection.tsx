@@ -300,11 +300,11 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
                     onMouseLeave={() => onSetCursorText?.(undefined)}
                     className="group rounded-xl bg-[#ffffff] border border-[#12141a]/10 hover:border-[#bfa37c] overflow-hidden transition-all duration-300 cursor-pointer shadow-sm hover:shadow-lg hover:-translate-y-0.5 flex flex-col"
                   >
-                    <div className="relative aspect-[16/10] bg-[#ebe7df] overflow-hidden">
+                    <div className="relative aspect-video bg-[#ebe7df] overflow-hidden">
                       <img
-                        src={prompt.resultImage}
+                        src={prompt.thumbnail || prompt.resultImage}
                         alt={prompt.title}
-                        className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         loading="lazy"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-[#12141a]/75 via-transparent to-[#12141a]/10" />
@@ -603,15 +603,17 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-12 gap-6 items-start">
-                <div className="sm:col-span-5 aspect-[16/12] rounded-xl overflow-hidden bg-[#ebe7df] border border-[#12141a]/10 shadow-md">
+                <div className="sm:col-span-4">
+                  <div className="mx-auto aspect-[9/16] w-full max-w-[300px] overflow-hidden rounded-xl border border-[#12141a]/10 bg-[#ebe7df] shadow-md">
                   <img
-                    src={selectedPrompt.resultImage}
+                    src={selectedPrompt.resultImage || selectedPrompt.thumbnail}
                     alt={selectedPrompt.title}
-                    className="w-full h-full object-contain"
+                    className="h-full w-full object-cover"
                   />
+                  </div>
                 </div>
 
-                <div className="sm:col-span-7 space-y-4">
+                <div className="sm:col-span-8 space-y-4">
                   <div>
                     <h3 className="text-2xl font-sans font-bold text-[#12141a]">
                       {selectedPrompt.title}
@@ -623,15 +625,18 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
                     <p className="mt-2 max-h-28 overflow-y-auto pr-2 text-xs leading-relaxed text-[#4a4d57] custom-scrollbar">
                       {selectedPrompt.previewText || selectedPrompt.fullPrompt}
                     </p>
-                    {selectedPrompt.type === 'FREE' && selectedPrompt.fullPrompt !== selectedPrompt.previewText && (
-                      <div className="mt-4 border-t border-[#12141a]/10 pt-4">
-                        <div className="text-[10px] font-sans font-bold uppercase tracking-wider text-[#9e825d]">Prompt</div>
-                        <p className="mt-2 max-h-40 overflow-y-auto whitespace-pre-wrap pr-2 text-xs leading-relaxed text-[#4a4d57] custom-scrollbar">
-                          {selectedPrompt.fullPrompt}
-                        </p>
-                      </div>
-                    )}
                   </div>
+                  {selectedPrompt.type === 'FREE' && selectedPrompt.fullPrompt !== selectedPrompt.previewText && (
+                    <div className="rounded-xl border border-[#12141a] bg-[#12141a] p-4 shadow-lg shadow-[#12141a]/10">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="text-[10px] font-sans font-bold uppercase tracking-wider text-[#d8be96]">Prompt</div>
+                        <div className="text-[10px] font-sans uppercase tracking-wider text-white/45">Ready to copy</div>
+                      </div>
+                      <p className="mt-3 max-h-44 overflow-y-auto whitespace-pre-wrap pr-2 text-xs leading-relaxed text-white/85 custom-scrollbar">
+                          {selectedPrompt.fullPrompt}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 

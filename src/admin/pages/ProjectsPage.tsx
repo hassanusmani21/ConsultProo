@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { useData } from '../../data/DataContext';
 import { Plus, Edit2, Trash2, X, Check, UploadCloud } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { supabaseConfigurationMessage } from '../../lib/supabase';
+import { uploadAdminFile } from '../../lib/adminUpload';
 
 export default function ProjectsPage() {
   const { data, addItem, updateItem, deleteItem } = useData();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [notice, setNotice] = useState('');
   const [formData, setFormData] = useState({
     title: '',
     category: 'Architecture',
@@ -22,17 +24,17 @@ export default function ProjectsPage() {
 
   const handleCoverUpload = async (file: File | undefined) => {
     if (!file) return;
-    if (file.size > 3 * 1024 * 1024) return;
-    if (!supabase) return;
-    const path = `cms/projects/${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '-')}`;
-    const { error } = await supabase.storage.from('cms-assets').upload(path, file, {
-      upsert: false,
-      contentType: file.type,
-      cacheControl: '3600',
-    });
-    if (error) return;
-    const coverImage = supabase.storage.from('cms-assets').getPublicUrl(path).data.publicUrl;
-    setFormData((current) => ({ ...current, coverImage }));
+    if (file.size > 3 * 1024 * 1024) {
+      setNotice('The cover image must be smaller than 3 MB.');
+      return;
+    }
+    try {
+      const coverImage = await uploadAdminFile({ kind: 'asset', collection: 'projects', itemId: editingId || crypto.randomUUID(), file });
+      setFormData((current) => ({ ...current, coverImage }));
+      setNotice('Cover image uploaded. Save the project to publish it.');
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : supabaseConfigurationMessage);
+    }
   };
 
   const handleOpenForm = (project?: any) => {
@@ -88,6 +90,7 @@ export default function ProjectsPage() {
         </div>
 
         <div className="bg-[#14161f] border border-white/10 rounded-2xl p-6">
+          {notice && <div className="mb-5 rounded-xl border border-white/10 bg-[#181a24] px-4 py-3 text-sm text-[#e2cfb0]">{notice}</div>}
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">

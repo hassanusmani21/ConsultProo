@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, Copy, Edit2, ExternalLink, FileUp, LoaderCircle, Plus, RotateCcw, Trash2, UploadCloud, X } from 'lucide-react';
 import { useData } from '../../data/DataContext';
-import { supabase } from '../../lib/supabase';
+import { uploadAdminFile } from '../../lib/adminUpload';
 import { isCheckoutProduct, productCheckoutPath } from '../../utils/productLinks';
 
 type FieldType = 'text' | 'textarea' | 'number' | 'checkbox' | 'select' | 'list' | 'image' | 'images' | 'file';
@@ -323,18 +323,6 @@ const formatFieldValue = (value: any, field: FieldConfig) => {
 const MAX_ASSET_UPLOAD_BYTES = 3 * 1024 * 1024;
 const MAX_PRODUCT_FILE_UPLOAD_BYTES = 100 * 1024 * 1024;
 
-const readFileAsDataUrl = (file: File) => new Promise<string>((resolve, reject) => {
-  const reader = new FileReader();
-  reader.onload = () => resolve(String(reader.result));
-  reader.onerror = () => reject(new Error('The file could not be read.'));
-  reader.readAsDataURL(file);
-});
-
-const getSafeFileExtension = (fileName: string) => {
-  const extension = fileName.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'bin';
-  return extension.slice(0, 12) || 'bin';
-};
-
 const validateProductPricing = (collection: string, item: any) => {
   if (!['ebooks', 'villaPlans', 'aiPrompts', 'digitalProducts'].includes(collection)) return '';
 
@@ -480,36 +468,11 @@ export default function CrudPage({ collection }: CrudPageProps) {
       const itemId = formData.id || editingId || crypto.randomUUID();
       let uploadedValues: string[];
 
-      if (!supabase) {
-        uploadedValues = [];
-        for (const [index, file] of selectedFiles.entries()) {
-          setUploadState('uploading', index, `Uploading file ${index + 1} of ${selectedFiles.length}: ${file.name}`, file.name);
-          uploadedValues.push(await readFileAsDataUrl(file));
-        }
-      } else {
-        const isPrivateProductFile = field.type === 'file';
-        const bucket = isPrivateProductFile ? 'product-files' : 'cms-assets';
-        const folder = isPrivateProductFile
-          ? (collection === 'ebooks' ? 'ebooks' : collection === 'villaPlans' ? 'villa-plans' : 'prompts')
-          : `cms/${collection}`;
-
-        uploadedValues = [];
-        for (const [index, file] of selectedFiles.entries()) {
-          setUploadState('uploading', index, `Uploading file ${index + 1} of ${selectedFiles.length}: ${file.name}`, file.name);
-          const suffix = isPrivateProductFile
-            ? getSafeFileExtension(file.name)
-            : `${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '-')}`;
-          const path = isPrivateProductFile ? `${folder}/${itemId}.${suffix}` : `${folder}/${suffix}`;
-          const { error } = await supabase.storage.from(bucket).upload(path, file, {
-            upsert: true,
-            contentType: file.type,
-            cacheControl: '3600',
-          });
-          if (error) throw new Error(`Upload failed: ${error.message}`);
-          uploadedValues.push(isPrivateProductFile
-            ? path
-            : supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl);
-        }
+      const isPrivateProductFile = field.type === 'file';
+      uploadedValues = [];
+      for (const [index, file] of selectedFiles.entries()) {
+        setUploadState('uploading', index, `Uploading file ${index + 1} of ${selectedFiles.length}: ${file.name}`, file.name);
+        uploadedValues.push(await uploadAdminFile({ kind: isPrivateProductFile ? 'product' : 'asset', collection, itemId, file }));
       }
 
       setFormData((current: any) => {
@@ -781,7 +744,7 @@ export default function CrudPage({ collection }: CrudPageProps) {
                                   multiple
                                   disabled={uploadStatus?.state === 'uploading'}
                                   onChange={(event) => {
-                                    const files = event.currentTarget.files;
+                                    const files = Array.from(event.currentTarget.files ?? []) as File[];
                                     event.currentTarget.value = '';
                                     event.currentTarget.blur();
                                     void handleAssetUpload(field, files);
@@ -813,7 +776,7 @@ export default function CrudPage({ collection }: CrudPageProps) {
                                 accept={field.accept || (field.type === 'image' ? 'image/*' : '*/*')}
                                 disabled={uploadStatus?.state === 'uploading'}
                                 onChange={(event) => {
-                                  const files = event.currentTarget.files;
+                                  const files = Array.from(event.currentTarget.files ?? []) as File[];
                                   event.currentTarget.value = '';
                                   event.currentTarget.blur();
                                   void handleAssetUpload(field, files);

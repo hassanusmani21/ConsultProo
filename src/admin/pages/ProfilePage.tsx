@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useData } from '../../data/DataContext';
 import { Save, UploadCloud } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { supabaseConfigurationMessage } from '../../lib/supabase';
+import { uploadAdminFile } from '../../lib/adminUpload';
 
 export default function ProfilePage() {
   const { data, updateData } = useData();
@@ -33,27 +34,13 @@ export default function ProfilePage() {
       return;
     }
 
-    if (supabase) {
-      const path = `cms/profile/${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '-')}`;
-      const { error } = await supabase.storage.from('cms-assets').upload(path, file, {
-        upsert: false,
-        contentType: file.type,
-        cacheControl: '3600',
-      });
-      if (error) {
-        setNotice(`Profile image upload failed: ${error.message}`);
-        return;
-      }
-      const url = supabase.storage.from('cms-assets').getPublicUrl(path).data.publicUrl;
-      setFormData((current: any) => ({ ...current, photoUrl: url }));
+    try {
+      const photoUrl = await uploadAdminFile({ kind: 'asset', collection: 'profile', itemId: 'profile', file });
+      setFormData((current: any) => ({ ...current, photoUrl }));
       setNotice('Profile image uploaded. Save the profile to publish it.');
-      return;
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : supabaseConfigurationMessage);
     }
-
-    const reader = new FileReader();
-    reader.onload = () => setFormData((current: any) => ({ ...current, photoUrl: String(reader.result) }));
-    reader.onerror = () => setNotice('The profile image could not be read.');
-    reader.readAsDataURL(file);
   };
 
   return (

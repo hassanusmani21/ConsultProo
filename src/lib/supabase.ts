@@ -8,3 +8,6 @@ export const supabase = supabaseUrl && supabasePublishableKey
   : null;
 
 export const isSupabaseConfigured = Boolean(supabase);
+
+export const supabaseConfigurationMessage =
+  'Uploads need Supabase Storage. Add VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY to this deployment, then redeploy and sign in again.';

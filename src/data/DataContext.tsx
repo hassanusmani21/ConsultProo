@@ -177,12 +177,19 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     };
 
     void loadRemoteData();
+    const contentChannel = supabase
+      .channel('public-cms-content')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cms_content' }, () => {
+        void loadRemoteData();
+      })
+      .subscribe();
     const { data: listener } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_IN') void loadRemoteData();
     });
     return () => {
       mounted = false;
       listener.subscription.unsubscribe();
+      void supabase.removeChannel(contentChannel);
     };
   }, []);
 

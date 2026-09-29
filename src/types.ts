@@ -43,6 +43,18 @@ export interface AiPromptData {
     lighting?: string;
     materials?: string;
   };
+  description?: string;
+  steps?: AiPromptStep[];
+  createdAt?: string;
+  updatedAt?: string;
+  published?: boolean;
+}
+
+export interface AiPromptStep {
+  id: string;
+  stepOrder: number;
+  promptText: string;
+  thumbnail: string;
 }
 
 export interface Project {

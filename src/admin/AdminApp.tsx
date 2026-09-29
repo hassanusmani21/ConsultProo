@@ -11,6 +11,7 @@ import LoginPage from './pages/LoginPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import SecurityPage from './pages/SecurityPage';
 import PurchasesPage from './pages/PurchasesPage';
+import AiPromptsPage from './pages/AiPromptsPage';
 
 function ProtectedAdmin() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -42,7 +43,7 @@ export default function AdminApp() {
         <Route path="interiors" element={<CrudPage collection="interiors" />} />
         <Route path="ebooks" element={<CrudPage collection="ebooks" />} />
         <Route path="villa-plans" element={<CrudPage collection="villaPlans" />} />
-        <Route path="ai-prompts" element={<CrudPage collection="aiPrompts" />} />
+        <Route path="ai-prompts" element={<AiPromptsPage />} />
         <Route path="content" element={<CrudPage collection="latestContent" />} />
         <Route path="learning" element={<CrudPage collection="learningArticles" />} />
         <Route path="digital-products" element={<CrudPage collection="digitalProducts" />} />

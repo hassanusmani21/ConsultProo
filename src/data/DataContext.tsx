@@ -141,7 +141,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [data, setData] = useState(getInitialData);
 
   useEffect(() => {
-    if (!supabase) return;
+    if (!supabase || import.meta.env.DEV) return;
     let mounted = true;
 
     const loadRemoteData = async () => {
@@ -241,6 +241,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   };
 
   const persistItem = async (collection: string, item: any) => {
+    if (import.meta.env.DEV) return;
     await requireSession();
     if (!supabase) return;
     const itemId = item.id || 'singleton';
@@ -254,8 +255,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const updateData = async (collection: string, newData: any) => {
     if (collection === 'sections') {
-      await requireSession();
-      if (supabase) {
+      if (!import.meta.env.DEV) await requireSession();
+      if (supabase && !import.meta.env.DEV) {
         const rows = Object.entries(newData).map(([itemId, item]) => makeRow(collection, itemId, item));
         const { error } = await supabase.from('cms_content').upsert(rows, { onConflict: 'collection,item_id' });
         if (error) throw new Error(`CMS save failed: ${error.message}`);
@@ -283,8 +284,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   };
 
   const deleteItem = async (collection: string, id: string) => {
-    await requireSession();
-    if (supabase) {
+    if (!import.meta.env.DEV) await requireSession();
+    if (supabase && !import.meta.env.DEV) {
       const { error } = await supabase.from('cms_content').delete().eq('collection', collection).eq('item_id', id);
       if (error) throw new Error(`CMS delete failed: ${error.message}`);
       if (PRODUCT_COLLECTIONS.has(collection)) {
@@ -296,8 +297,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   };
 
   const resetData = async () => {
-    await requireSession();
-    if (supabase) {
+    if (!import.meta.env.DEV) await requireSession();
+    if (supabase && !import.meta.env.DEV) {
       const { error } = await supabase.from('cms_content').upsert(rowsFromData(defaultData), { onConflict: 'collection,item_id' });
       if (error) throw new Error(`CMS reset failed: ${error.message}`);
       await Promise.all(

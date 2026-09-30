@@ -73,6 +73,10 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
 
   const handleCopyPrompt = async (prompt: AiPromptData, e?: React.MouseEvent) => {
     e?.stopPropagation();
+    if (prompt.steps && prompt.steps.length > 1) {
+      handleOpenPrompt(prompt);
+      return;
+    }
     if (prompt.type !== 'FREE') {
       handleOpenPrompt(prompt);
       return;
@@ -86,6 +90,13 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
 
     await navigator.clipboard.writeText(prompt.fullPrompt);
     setCopiedPromptId(prompt.id);
+    soundManager.playClick();
+    setTimeout(() => setCopiedPromptId(null), 2000);
+  };
+
+  const handleCopyStep = async (promptId: string, stepId: string, promptText: string) => {
+    await navigator.clipboard.writeText(promptText);
+    setCopiedPromptId(`${promptId}:${stepId}`);
     soundManager.playClick();
     setTimeout(() => setCopiedPromptId(null), 2000);
   };
@@ -606,7 +617,7 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
                 <div className="sm:col-span-4">
                   <div className="mx-auto aspect-[9/16] w-full max-w-[300px] overflow-hidden rounded-xl border border-[#12141a]/10 bg-[#ebe7df] shadow-md">
                   <img
-                    src={selectedPrompt.resultImage || selectedPrompt.thumbnail}
+                    src={selectedPrompt.thumbnail || selectedPrompt.resultImage}
                     alt={selectedPrompt.title}
                     className="h-full w-full object-cover"
                   />
@@ -626,7 +637,23 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
                       {selectedPrompt.previewText || selectedPrompt.fullPrompt}
                     </p>
                   </div>
-                  {selectedPrompt.type === 'FREE' && selectedPrompt.fullPrompt !== selectedPrompt.previewText && (
+                  {selectedPrompt.steps && selectedPrompt.steps.length > 1 ? (
+                    <div className="space-y-4">
+                      {[...selectedPrompt.steps].sort((a, b) => a.stepOrder - b.stepOrder).map((step, index) => (
+                        <section key={step.id} className="overflow-hidden rounded-xl border border-[#12141a]/10 bg-white">
+                          <div className="border-b border-[#12141a]/10 px-4 py-3 text-[10px] font-sans font-bold uppercase tracking-wider text-[#9e825d]">Step {index + 1}</div>
+                          {step.thumbnail && <img src={step.thumbnail} alt={`${selectedPrompt.title} — Step ${index + 1}`} loading="lazy" className="max-h-72 w-full object-cover" />}
+                          <div className="p-4">
+                            <pre className="whitespace-pre-wrap break-words rounded-lg bg-[#12141a] p-3 text-xs leading-relaxed text-white/85">{step.promptText}</pre>
+                            {selectedPrompt.type === 'FREE' && <button type="button" onClick={() => void handleCopyStep(selectedPrompt.id, step.id, step.promptText)} className="mt-3 inline-flex items-center justify-center gap-2 rounded-lg bg-[#12141a] px-4 py-2.5 text-xs font-sans font-bold uppercase tracking-wider text-white transition-colors hover:bg-[#bfa37c] hover:text-[#12141a]">
+                              {copiedPromptId === `${selectedPrompt.id}:${step.id}` ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
+                              <span>{copiedPromptId === `${selectedPrompt.id}:${step.id}` ? 'Copied' : 'Copy Prompt'}</span>
+                            </button>}
+                          </div>
+                        </section>
+                      ))}
+                    </div>
+                  ) : selectedPrompt.type === 'FREE' && selectedPrompt.fullPrompt !== selectedPrompt.previewText && (
                     <div className="rounded-xl border border-[#12141a] bg-[#12141a] p-4 shadow-lg shadow-[#12141a]/10">
                       <div className="flex items-center justify-between gap-3">
                         <div className="text-[10px] font-sans font-bold uppercase tracking-wider text-[#d8be96]">Prompt</div>
@@ -672,7 +699,9 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
                     )}
                   </button>
 
-                  {selectedPrompt.type === 'FREE' ? (
+                  {selectedPrompt.steps && selectedPrompt.steps.length > 1 ? (
+                    selectedPrompt.type === 'PREMIUM' ? <button onClick={() => handleCheckout('ai-prompts', selectedPrompt.id)} className="px-6 py-3 rounded-xl bg-[#12141a] text-[#ffffff] font-sans font-bold text-xs uppercase tracking-[0.14em] hover:bg-[#bfa37c] hover:text-[#12141a] active:scale-95 transition-all flex items-center justify-center gap-2 shadow-xl"><Lock className="w-4 h-4"/><span>Unlock Collection</span></button> : null
+                  ) : selectedPrompt.type === 'FREE' ? (
                     <button
                       onClick={(e) => handleCopyPrompt(selectedPrompt, e)}
                       className="px-6 py-3 rounded-xl bg-[#12141a] text-[#ffffff] font-sans font-bold text-xs uppercase tracking-[0.14em] hover:bg-[#bfa37c] hover:text-[#12141a] active:scale-95 transition-all flex items-center justify-center gap-2 shadow-xl"

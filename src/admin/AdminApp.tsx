@@ -30,11 +30,13 @@ function ProtectedAdmin() {
 }
 
 export default function AdminApp() {
+  const adminLayout = import.meta.env.DEV ? <AdminLayout /> : <ProtectedAdmin />;
+
   return (
     <Routes>
       <Route path="login" element={<LoginPage />} />
       <Route path="reset-password" element={<ResetPasswordPage />} />
-      <Route path="/" element={<ProtectedAdmin />}>
+      <Route path="/" element={adminLayout}>
         <Route index element={<Dashboard />} />
         <Route path="profile" element={<ProfilePage />} />
         <Route path="purchases" element={<PurchasesPage />} />

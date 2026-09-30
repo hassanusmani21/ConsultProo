@@ -72,9 +72,9 @@ export default function AdminLayout() {
   );
 
   return (
-    <div className="min-h-screen bg-[#0e1015] flex selection:bg-[#bfa37c] selection:text-[#0e1015] print:bg-white">
+    <div className="flex h-dvh w-full overflow-hidden bg-[#0e1015] selection:bg-[#bfa37c] selection:text-[#0e1015] print:h-auto print:min-h-screen print:overflow-visible print:bg-white">
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex w-72 flex-col bg-[#14161f] border-r border-white/10 h-screen sticky top-0 print:hidden">
+      <aside className="hidden h-dvh w-72 shrink-0 flex-col border-r border-white/10 bg-[#14161f] print:hidden lg:flex">
         <div className="p-6 border-b border-white/10">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg border border-[#bfa37c]/30 bg-[#181a24] flex items-center justify-center text-[#bfa37c] font-sans font-bold text-sm">
@@ -139,9 +139,9 @@ export default function AdminLayout() {
       )}
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden print:h-auto print:overflow-visible print:bg-white">
-        <div data-admin-scroll-container className="flex-1 overflow-y-auto p-4 sm:p-8 pt-24 lg:pt-8 custom-scrollbar print:overflow-visible print:p-0" style={{ overflowAnchor: 'none' }}>
-          <div className="max-w-5xl mx-auto">
+      <main className="flex h-dvh min-h-0 min-w-0 flex-1 flex-col overflow-hidden print:h-auto print:overflow-visible print:bg-white">
+        <div data-admin-scroll-container className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-4 pt-24 custom-scrollbar sm:p-8 sm:pt-24 lg:pt-8 print:overflow-visible print:p-0" style={{ overflowAnchor: 'none' }}>
+          <div className="mx-auto w-full max-w-5xl min-w-0">
             <Outlet />
           </div>
         </div>

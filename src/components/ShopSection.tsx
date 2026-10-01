@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useData } from '../data/DataContext';
 import { EbookProduct, VillaPlan, AiPromptData } from '../types';
+import { getPromptLibraryEntries, getPromptSourceId, PromptLibraryEntry } from '../data/aiPromptLibrary';
 import { soundManager } from '../utils/sound';
 import { PriceDisplay } from './PriceDisplay';
 import { getFreePromptCompareAtPrice, getFreePromptDownloadUrl, hasPromptFile } from '../utils/freePromptAccess';
@@ -40,7 +41,7 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
   const [selectedEbookVersionId, setSelectedEbookVersionId] = useState<EbookVersionId>("non-editable");
   const [selectedEbook, setSelectedEbook] = useState<EbookProduct | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<VillaPlan | null>(null);
-  const [selectedPrompt, setSelectedPrompt] = useState<AiPromptData | null>(null);
+  const [selectedPrompt, setSelectedPrompt] = useState<PromptLibraryEntry | null>(null);
   const [copiedPromptId, setCopiedPromptId] = useState<string | null>(null);
   const [copiedPromptLinkId, setCopiedPromptLinkId] = useState<string | null>(null);
   const [selectedPlotSize, setSelectedPlotSize] = useState<string>('');
@@ -51,7 +52,7 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
       ? { id: "editable" as const, label: "Editable", price: selectedEbook.editablePrice, productId: selectedEbook.id + ":editable" }
       : { id: "non-editable" as const, label: "Non-editable", price: selectedEbook.price, productId: selectedEbook.id })
     : null;
-  const aiPromptsLibrary = data.aiPrompts.filter((item: AiPromptData & { published?: boolean }) => item.published !== false);
+  const aiPromptsLibrary = getPromptLibraryEntries(data.aiPrompts);
 
   useEffect(() => {
     const defaultCategory = section?.defaultCategory;
@@ -65,8 +66,8 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
   const handleOpenEbook = (ebook: EbookProduct) => {
     soundManager.playClick();
     setSelectedEbook(ebook);
-  };
     setSelectedEbookVersionId(Number(ebook.editablePrice) > 0 ? "editable" : "non-editable");
+  };
 
   const handleOpenPlan = (plan: VillaPlan) => {
     soundManager.playClick();
@@ -74,12 +75,12 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
     setSelectedPlotSize(plan.plotSizes[0] || '');
   };
 
-  const handleOpenPrompt = (prompt: AiPromptData) => {
+  const handleOpenPrompt = (prompt: PromptLibraryEntry) => {
     soundManager.playClick();
     setSelectedPrompt(prompt);
   };
 
-  const handleCopyPrompt = async (prompt: AiPromptData, e?: React.MouseEvent) => {
+  const handleCopyPrompt = async (prompt: PromptLibraryEntry, e?: React.MouseEvent) => {
     e?.stopPropagation();
     if (prompt.steps && prompt.steps.length > 1) {
       handleOpenPrompt(prompt);
@@ -90,9 +91,10 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
       return;
     }
 
-    if (hasPromptFile(prompt)) {
+    const sourcePrompt = { ...prompt, id: getPromptSourceId(prompt) };
+    if (hasPromptFile(sourcePrompt)) {
       soundManager.playClick();
-      await downloadFileFromUrl(getFreePromptDownloadUrl(prompt), prompt.title);
+      await downloadFileFromUrl(getFreePromptDownloadUrl(sourcePrompt), prompt.title);
       return;
     }
 
@@ -109,7 +111,7 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
     setTimeout(() => setCopiedPromptId(null), 2000);
   };
 
-  const handleCopyPromptLink = async (prompt: AiPromptData) => {
+  const handleCopyPromptLink = async (prompt: PromptLibraryEntry) => {
     await navigator.clipboard.writeText(getPromptShareUrl(prompt.id));
     setCopiedPromptLinkId(prompt.id);
     soundManager.playClick();
@@ -560,8 +562,6 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
                 </div>
               </div>
 
-              {/* Purchase Footer */}
-              <div className="flex flex-col gap-4 border-t border-[#12141a]/10 pt-4 sm:flex-row sm:items-center sm:justify-between">
               <section className="border-t border-[#12141a]/10 pt-5">
                 <h4 className="text-xs font-bold uppercase tracking-[0.16em] text-[#12141a]">Choose Your Version</h4>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -588,6 +588,8 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
                 </div>
               </section>
 
+              {/* Purchase Footer */}
+              <div className="flex flex-col gap-4 border-t border-[#12141a]/10 pt-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <span className="text-[10px] font-sans text-[#747783] uppercase tracking-wider block">One-time Investment</span>
                   <PriceDisplay price={selectedEbookVersion?.price || selectedEbook.price} compareAtPrice={selectedEbookVersion?.id === "non-editable" ? selectedEbook.compareAtPrice : undefined} currency={selectedEbook.currency} currentClassName="text-2xl font-sans font-extrabold text-[#12141a]" />
@@ -760,7 +762,7 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
                   ) : (
                     <button
                       type="button"
-                      onClick={() => handleCheckout('ai-prompts', selectedPrompt.id)}
+                      onClick={() => handleCheckout('ai-prompts', getPromptSourceId(selectedPrompt))}
                       className="px-6 py-3 rounded-xl bg-[#12141a] text-[#ffffff] font-sans font-bold text-xs uppercase tracking-[0.14em] hover:bg-[#bfa37c] hover:text-[#12141a] active:scale-95 transition-all flex items-center justify-center gap-2 shadow-xl"
                     >
                       <Lock className="w-4 h-4" />

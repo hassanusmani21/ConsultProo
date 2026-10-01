@@ -26,6 +26,7 @@ import {
 import { aiVideosList } from '../data/aiPromptsData';
 import { useData } from '../data/DataContext';
 import { AiCategory, AiPromptData } from '../types';
+import { getPromptCodeSuffix, getPromptLibraryEntries, getPromptSourceId, PromptLibraryEntry } from '../data/aiPromptLibrary';
 import { soundManager } from '../utils/sound';
 import { PriceDisplay } from './PriceDisplay';
 import { getFreePromptCompareAtPrice, getFreePromptDownloadUrl, hasPromptFile } from '../utils/freePromptAccess';
@@ -54,14 +55,14 @@ export const AiArchitecture: React.FC<AiArchitectureProps> = ({
   const { data } = useData();
   const navigate = useNavigate();
   const section = data.sections.aiArchitecture;
-  const aiPromptsLibrary = data.aiPrompts.filter((item: AiPromptData & { published?: boolean }) => item.published !== false);
+  const aiPromptsLibrary = getPromptLibraryEntries(data.aiPrompts);
   const [selectedCategory, setSelectedCategory] = useState<'ALL' | AiCategory>('ALL');
   const [activePromptId, setActivePromptId] = useState<string>('');
   const [isPlaying, setIsPlaying] = useState<boolean>(true);
   const [videoError, setVideoError] = useState<boolean>(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isHoveringVideo, setIsHoveringVideo] = useState<boolean>(false);
-  const [selectedPromptModal, setSelectedPromptModal] = useState<AiPromptData | null>(null);
+  const [selectedPromptModal, setSelectedPromptModal] = useState<PromptLibraryEntry | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -89,7 +90,7 @@ export const AiArchitecture: React.FC<AiArchitectureProps> = ({
   };
 
   // Select specific prompt
-  const handleSelectPrompt = (prompt: AiPromptData) => {
+  const handleSelectPrompt = (prompt: PromptLibraryEntry) => {
     soundManager.playClick();
     setActivePromptId(prompt.id);
     setVideoError(false);
@@ -113,12 +114,13 @@ export const AiArchitecture: React.FC<AiArchitectureProps> = ({
   };
 
   // Copy prompt micro-interaction
-  const handleCopyPrompt = async (prompt: AiPromptData, e?: React.MouseEvent) => {
+  const handleCopyPrompt = async (prompt: PromptLibraryEntry, e?: React.MouseEvent) => {
     e?.stopPropagation();
     if (prompt.type === 'FREE') {
-      if (hasPromptFile(prompt)) {
+      const sourcePrompt = { ...prompt, id: getPromptSourceId(prompt) };
+      if (hasPromptFile(sourcePrompt)) {
         soundManager.playClick();
-        await downloadFileFromUrl(getFreePromptDownloadUrl(prompt), prompt.title);
+        await downloadFileFromUrl(getFreePromptDownloadUrl(sourcePrompt), prompt.title);
         return;
       }
 
@@ -130,7 +132,7 @@ export const AiArchitecture: React.FC<AiArchitectureProps> = ({
       }, 2200);
     } else {
       soundManager.playClick();
-      navigate(`/checkout/ai-prompts/${prompt.id}`);
+      navigate(`/checkout/ai-prompts/${getPromptSourceId(prompt)}`);
     }
   };
 
@@ -228,7 +230,7 @@ export const AiArchitecture: React.FC<AiArchitectureProps> = ({
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             <span className="text-white font-medium">LIVE COMPUTATIONAL LAB</span>
             <span className="text-white/20">|</span>
-            <span>PROMPT / {activePrompt.code.split('/')[1] || '001'}</span>
+            <span>PROMPT / {getPromptCodeSuffix(activePrompt.code)}</span>
           </div>
         </div>
 
@@ -266,7 +268,7 @@ export const AiArchitecture: React.FC<AiArchitectureProps> = ({
           {/* Top Architectural Annotation Strip */}
           <div className="px-5 py-3 border-b border-white/10 bg-[#0f1016] flex flex-wrap items-center justify-between gap-4 text-[11px] font-mono text-[#8e929b]">
             <div className="flex items-center gap-3">
-              <span className="text-[#c5a880] font-bold">AI WORKFLOW / {activePrompt.code.split('/')[1]?.trim() || '001'}</span>
+              <span className="text-[#c5a880] font-bold">AI WORKFLOW / {getPromptCodeSuffix(activePrompt.code)}</span>
               <span className="text-white/20">|</span>
               <span className="text-white uppercase font-sans font-semibold tracking-wider">
                 {activePrompt.category}
@@ -567,7 +569,7 @@ export const AiArchitecture: React.FC<AiArchitectureProps> = ({
                 ) : (
                   <button
                     type="button"
-                    onClick={() => navigate(`/checkout/ai-prompts/${selectedPromptModal.id}`)}
+                    onClick={() => navigate(`/checkout/ai-prompts/${getPromptSourceId(selectedPromptModal)}`)}
                     className="px-5 py-2 rounded-lg bg-[#c5a880] text-[#090a0f] font-sans font-bold text-xs uppercase tracking-wider hover:bg-[#d8be96] flex items-center gap-1.5"
                   >
                     <Lock className="w-3.5 h-3.5" />

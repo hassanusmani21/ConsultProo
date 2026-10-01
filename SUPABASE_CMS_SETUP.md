@@ -4,9 +4,10 @@ The admin dashboard now uses Supabase Auth, the `cms_content` table, Supabase St
 
 ## One-time Supabase steps
 
-1. Open the Supabase project SQL Editor and run the complete `supabase/schema.sql` file again. It is safe to run repeatedly and adds the CMS tables, policies, and storage buckets.
-2. Open **Authentication → Users → Add user** and create the administrator email/password. Do not add a customer signup page.
-3. Copy that user's UUID and run this query in SQL Editor:
+1. Open the Supabase project SQL Editor and run the complete `supabase/schema.sql` file again. It is safe to run repeatedly and adds the CMS tables, policies, storage buckets, supported checkout currencies, and Realtime publication.
+2. If you deploy migrations separately, also run every file in `supabase/migrations/` in timestamp order. In particular, `20260929000000_enable_cms_content_realtime.sql` is required for already-open public pages to refresh after publishing.
+3. Open **Authentication → Users → Add user** and create the administrator email/password. Do not add a customer signup page.
+4. Copy that user's UUID and run this query in SQL Editor:
 
 ```sql
 insert into public.admin_users (user_id)

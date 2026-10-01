@@ -9,6 +9,7 @@ import { learningHubArticles } from './learningHubData';
 import { portfolioProjects } from './portfolioData';
 import { digitalProducts } from './productsData';
 import { villaPlans } from './villaPlansData';
+import { normalizeAiPrompt } from './aiPromptLibrary';
 import { supabase } from '../lib/supabase';
 
 interface DataContextType {
@@ -22,10 +23,15 @@ interface DataContextType {
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 const STORAGE_KEY = 'ar_ahmed_cms_data';
+const isLocalDevelopment = import.meta.env.DEV
+  && typeof window !== 'undefined'
+  && ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
 const SINGLETON_COLLECTIONS = new Set(['profile', 'masterclass']);
 const PRODUCT_COLLECTIONS = new Set(['ebooks', 'villaPlans', 'aiPrompts', 'digitalProducts']);
 const CHECKOUT_CURRENCIES = new Set(['INR', 'USD', 'AED', 'EUR', 'GBP', 'SGD']);
 const CHECKOUT_DELIVERY_TYPES = new Set(['file', 'pdf', 'video', 'course']);
+
+const asArray = (value: unknown) => Array.isArray(value) ? value : [];
 
 const defaultData = {
   profile: mockData.initialProfile,
@@ -50,16 +56,27 @@ const defaultData = {
   },
 };
 
-const mergeSavedData = (savedData: any) => ({
-  ...defaultData,
-  ...savedData,
-  profile: { ...defaultData.profile, ...(savedData?.profile ?? {}) },
-  masterclass: { ...defaultData.masterclass, ...(savedData?.masterclass ?? {}) },
-  sections: Object.keys(defaultData.sections).reduce((sections: any, key) => ({
-    ...sections,
-    [key]: { ...defaultData.sections[key as keyof typeof defaultData.sections], ...(savedData?.sections?.[key] ?? {}) },
-  }), {}),
-});
+const mergeSavedData = (savedData: any) => {
+  const merged = {
+    ...defaultData,
+    ...savedData,
+    profile: { ...defaultData.profile, ...(savedData?.profile ?? {}) },
+    masterclass: { ...defaultData.masterclass, ...(savedData?.masterclass ?? {}) },
+    sections: Object.keys(defaultData.sections).reduce((sections: any, key) => ({
+      ...sections,
+      [key]: { ...defaultData.sections[key as keyof typeof defaultData.sections], ...(savedData?.sections?.[key] ?? {}) },
+    }), {}),
+  };
+
+  // Browser storage and JSON CMS records are untrusted at runtime. Keep an
+  // invalid legacy entry from taking down either the dashboard or public site.
+  return {
+    ...merged,
+    aiPrompts: asArray(merged.aiPrompts)
+      .map(item => normalizeAiPrompt(item))
+      .filter((item): item is NonNullable<typeof item> => Boolean(item)),
+  };
+};
 
 const getInitialData = () => {
   if (typeof window === 'undefined') return defaultData;
@@ -105,7 +122,11 @@ const mergeRemoteRows = (current: any, rows: any[]) => {
     } else if (SINGLETON_COLLECTIONS.has(collection)) {
       next[collection] = { ...(current[collection] ?? {}), ...(collectionRows[0].data ?? {}) };
     } else {
-      next[collection] = collectionRows.map(row => row.data);
+      next[collection] = collectionRows
+        .map(row => collection === 'aiPrompts'
+          ? normalizeAiPrompt({ ...(row.data ?? {}), published: row.published }, row.item_id)
+          : row.data)
+        .filter(Boolean);
     }
   });
   return next;
@@ -141,7 +162,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [data, setData] = useState(getInitialData);
 
   useEffect(() => {
-    if (!supabase || import.meta.env.DEV) return;
+    // Local admin mode is deliberately browser-only and never reads or writes
+    // the production CMS without an authenticated Supabase session.
+    if (isLocalDevelopment || !supabase) return;
     let mounted = true;
 
     const loadRemoteData = async () => {
@@ -207,6 +230,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const requireSession = async () => {
+    if (isLocalDevelopment) return;
     if (!supabase) throw new Error('Supabase is not configured. Add the VITE_SUPABASE_* variables to this deployment.');
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) throw new Error('Your admin session has expired. Please sign in again.');
@@ -226,31 +250,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const storagePath = productStoragePath(collection, item);
-    const { error } = await supabase.from('products').upsert({
-      id: item.id,
-      name: String(item.title || item.name || item.id).trim(),
-      price: Number(item.price),
-      currency,
-      storage_path: storagePath,
-      delivery_type: productDeliveryType(item, storagePath),
-      active: activeOverride ?? item.published !== false,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'id' });
-    if (error) throw new Error(`Product catalog update failed: ${error.message}`);
-  };
-
-  const persistItem = async (collection: string, item: any) => {
-    if (import.meta.env.DEV) return;
-    await requireSession();
-    if (!supabase) return;
-    const itemId = item.id || 'singleton';
-    const { error } = await supabase.from('cms_content').upsert(
-      makeRow(collection, itemId, item),
-      { onConflict: 'collection,item_id' },
-    );
-    if (error) throw new Error(`CMS save failed: ${error.message}`);
-    await syncProduct(collection, item);
     if (collection === "ebooks") {
       const editableProductId = String(item.id) + ":editable";
       const editablePrice = Number(item.editablePrice);
@@ -274,12 +273,42 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
+    const storagePath = productStoragePath(collection, item);
+    const { error } = await supabase.from('products').upsert({
+      id: item.id,
+      name: String(item.title || item.name || item.id).trim(),
+      price: Number(item.price),
+      currency,
+      storage_path: storagePath,
+      delivery_type: productDeliveryType(item, storagePath),
+      active: activeOverride ?? item.published !== false,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'id' });
+    if (error) throw new Error(`Product catalog update failed: ${error.message}`);
+  };
+
+  const persistItem = async (collection: string, item: any) => {
+    if (collection === 'aiPrompts' && String(item?.type).toUpperCase() === 'PREMIUM' && item?.published !== false) {
+      if (!(Number(item?.price) > 0)) throw new Error('A published premium prompt needs a price greater than zero.');
+      if (!CHECKOUT_CURRENCIES.has(String(item?.currency || 'INR').toUpperCase())) {
+        throw new Error('This currency is not enabled for checkout.');
+      }
+    }
+    await requireSession();
+    if (isLocalDevelopment || !supabase) return;
+    const itemId = item.id || 'singleton';
+    const { error } = await supabase.from('cms_content').upsert(
+      makeRow(collection, itemId, item),
+      { onConflict: 'collection,item_id' },
+    );
+    if (error) throw new Error(`CMS save failed: ${error.message}`);
+    await syncProduct(collection, item);
   };
 
   const updateData = async (collection: string, newData: any) => {
     if (collection === 'sections') {
-      if (!import.meta.env.DEV) await requireSession();
-      if (supabase && !import.meta.env.DEV) {
+      await requireSession();
+      if (!isLocalDevelopment && supabase) {
         const rows = Object.entries(newData).map(([itemId, item]) => makeRow(collection, itemId, item));
         const { error } = await supabase.from('cms_content').upsert(rows, { onConflict: 'collection,item_id' });
         if (error) throw new Error(`CMS save failed: ${error.message}`);
@@ -307,8 +336,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   };
 
   const deleteItem = async (collection: string, id: string) => {
-    if (!import.meta.env.DEV) await requireSession();
-    if (supabase && !import.meta.env.DEV) {
+    await requireSession();
+    if (!isLocalDevelopment && supabase) {
       const { error } = await supabase.from('cms_content').delete().eq('collection', collection).eq('item_id', id);
       if (error) throw new Error(`CMS delete failed: ${error.message}`);
       if (PRODUCT_COLLECTIONS.has(collection)) {
@@ -320,8 +349,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   };
 
   const resetData = async () => {
-    if (!import.meta.env.DEV) await requireSession();
-    if (supabase && !import.meta.env.DEV) {
+    await requireSession();
+    if (!isLocalDevelopment && supabase) {
       const { error } = await supabase.from('cms_content').upsert(rowsFromData(defaultData), { onConflict: 'collection,item_id' });
       if (error) throw new Error(`CMS reset failed: ${error.message}`);
       await Promise.all(

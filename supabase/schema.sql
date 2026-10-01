@@ -4,7 +4,7 @@ create table if not exists public.products (
   id text primary key,
   name text not null check (char_length(trim(name)) between 1 and 200),
   price numeric(12, 2) not null check (price > 0),
-  currency text not null check (currency = 'INR'),
+  currency text not null check (currency in ('INR', 'USD', 'AED', 'EUR', 'GBP', 'SGD')),
   storage_path text,
   delivery_type text not null default 'pdf' check (delivery_type in ('file', 'pdf', 'video', 'course')),
   active boolean not null default true,
@@ -16,6 +16,9 @@ alter table public.products add column if not exists storage_path text;
 alter table public.products add column if not exists delivery_type text not null default 'pdf';
 alter table public.products drop constraint if exists products_delivery_type_check;
 alter table public.products add constraint products_delivery_type_check check (delivery_type in ('file', 'pdf', 'video', 'course'));
+
+alter table public.products drop constraint if exists products_currency_check;
+alter table public.products add constraint products_currency_check check (currency in ('INR', 'USD', 'AED', 'EUR', 'GBP', 'SGD'));
 
 insert into public.products (id, name, price, currency, storage_path, delivery_type)
 values
@@ -57,7 +60,7 @@ create table if not exists public.orders (
   product_id text not null,
   product_name text not null check (char_length(trim(product_name)) between 1 and 200),
   product_price numeric(12, 2) not null check (product_price > 0),
-  product_currency text not null check (product_currency = 'INR'),
+  product_currency text not null check (product_currency in ('INR', 'USD', 'AED', 'EUR', 'GBP', 'SGD')),
   product_storage_path text,
   product_delivery_type text not null default 'pdf' check (product_delivery_type in ('file', 'pdf', 'video', 'course')),
   customer_id uuid not null references public.customers(id),
@@ -79,6 +82,9 @@ alter table public.orders drop constraint if exists orders_product_delivery_type
 alter table public.orders add constraint orders_product_delivery_type_check check (product_delivery_type in ('file', 'pdf', 'video', 'course'));
 alter table public.orders drop constraint if exists orders_status_check;
 alter table public.orders add constraint orders_status_check check (status in ('PENDING_PAYMENT', 'PAID'));
+
+alter table public.orders drop constraint if exists orders_product_currency_check;
+alter table public.orders add constraint orders_product_currency_check check (product_currency in ('INR', 'USD', 'AED', 'EUR', 'GBP', 'SGD'));
 create unique index if not exists orders_razorpay_order_id_idx on public.orders (razorpay_order_id) where razorpay_order_id is not null;
 create unique index if not exists orders_razorpay_payment_id_idx on public.orders (razorpay_payment_id) where razorpay_payment_id is not null;
 create unique index if not exists orders_client_order_id_idx on public.orders (client_order_id) where client_order_id is not null;
@@ -414,3 +420,18 @@ on storage.objects for all
 to authenticated
 using (bucket_id in ('cms-assets', 'product-files') and public.is_admin())
 with check (bucket_id in ('cms-assets', 'product-files') and public.is_admin());
+
+-- Keep already-open public pages in sync after an administrator publishes CMS content.
+do $$
+begin
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime')
+    and not exists (
+      select 1 from pg_publication_tables
+      where pubname = 'supabase_realtime'
+        and schemaname = 'public'
+        and tablename = 'cms_content'
+    ) then
+    alter publication supabase_realtime add table public.cms_content;
+  end if;
+end
+$$;

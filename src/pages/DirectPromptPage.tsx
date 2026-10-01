@@ -6,7 +6,7 @@ import { GridOverlay } from '../components/GridOverlay';
 import { Navbar } from '../components/Navbar';
 import { PriceDisplay } from '../components/PriceDisplay';
 import { useData } from '../data/DataContext';
-import { AiPromptData } from '../types';
+import { getPromptLibraryEntries, getPromptSourceId } from '../data/aiPromptLibrary';
 import { getFreePromptCompareAtPrice, getFreePromptDownloadUrl, hasPromptFile } from '../utils/freePromptAccess';
 import { productCheckoutRoute } from '../utils/productLinks';
 import { getPromptShareUrl } from '../utils/promptLinks';
@@ -23,9 +23,7 @@ export default function DirectPromptPage() {
   const [copiedLink, setCopiedLink] = useState(false);
   const [isCheckingPrompt, setIsCheckingPrompt] = useState(true);
 
-  const prompt = (data.aiPrompts ?? []).find((item: AiPromptData & { published?: boolean }) => (
-    item.id === promptId && item.published !== false
-  ));
+  const prompt = getPromptLibraryEntries(data.aiPrompts).find(item => item.id === promptId);
 
   useEffect(() => {
     setIsCheckingPrompt(true);
@@ -50,13 +48,13 @@ export default function DirectPromptPage() {
     if (!prompt) return;
     if (prompt.type !== 'FREE') {
       soundManager.playClick();
-      navigate(productCheckoutRoute('aiPrompts', prompt.id));
+      navigate(productCheckoutRoute('aiPrompts', getPromptSourceId(prompt)));
       return;
     }
 
     if (hasPromptFile(prompt)) {
       soundManager.playClick();
-      await downloadFileFromUrl(getFreePromptDownloadUrl(prompt), prompt.title);
+      await downloadFileFromUrl(getFreePromptDownloadUrl({ ...prompt, id: getPromptSourceId(prompt) }), prompt.title);
       return;
     }
 

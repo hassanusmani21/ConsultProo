@@ -13,6 +13,11 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Vite replaces this at build time, so this can never bypass authentication in a production bundle.
+const isLocalDevelopment = import.meta.env.DEV
+  && typeof window !== 'undefined'
+  && ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+
 const ensureAdmin = async (userId: string) => {
   if (!supabase) throw new Error('Supabase is not configured for this deployment.');
 
@@ -41,6 +46,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<any | null>(null);
 
   useEffect(() => {
+    if (isLocalDevelopment) {
+      setUser({ id: 'local-development-admin', email: 'local@development' });
+      setIsAuthenticated(true);
+      setMfaRequired(false);
+      setIsLoading(false);
+      return;
+    }
+
     if (!supabase) {
       setIsLoading(false);
       return;
@@ -97,6 +110,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
+    if (isLocalDevelopment) {
+      setIsAuthenticated(true);
+      setMfaRequired(false);
+      setUser({ id: 'local-development-admin', email: 'local@development' });
+      return false;
+    }
+
     if (!supabase) throw new Error('Supabase is not configured for this deployment.');
     if (!email.trim() || !password) throw new Error('Email and password are required.');
 
@@ -118,6 +138,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const verifyMfa = async (code: string) => {
+    if (isLocalDevelopment) return;
     if (!supabase || !mfaFactorId) throw new Error('No authenticator challenge is active.');
     const challenge = await supabase.auth.mfa.challenge({ factorId: mfaFactorId });
     if (challenge.error || !challenge.data) throw new Error(challenge.error?.message || 'OTP challenge failed.');
@@ -134,6 +155,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
+    if (isLocalDevelopment) return;
     if (supabase) await supabase.auth.signOut();
     setIsAuthenticated(false);
     setMfaRequired(false);

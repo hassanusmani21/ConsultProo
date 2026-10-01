@@ -251,6 +251,29 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     );
     if (error) throw new Error(`CMS save failed: ${error.message}`);
     await syncProduct(collection, item);
+    if (collection === "ebooks") {
+      const editableProductId = String(item.id) + ":editable";
+      const editablePrice = Number(item.editablePrice);
+      if (Number.isFinite(editablePrice) && editablePrice > 0) {
+        const editableStoragePath = String(item.editableStoragePath || "").trim();
+        if (!editableStoragePath) throw new Error("An editable ebook price requires an editable file.");
+        const { error } = await supabase.from("products").upsert({
+          id: editableProductId,
+          name: String(item.title || item.id).trim() + " — Editable",
+          price: editablePrice,
+          currency,
+          storage_path: editableStoragePath,
+          delivery_type: productDeliveryType({ deliveryType: "file" }, editableStoragePath),
+          active: activeOverride ?? item.published !== false,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "id" });
+        if (error) throw new Error("Editable product catalog update failed: " + error.message);
+      } else {
+        const { error } = await supabase.from("products").update({ active: false }).eq("id", editableProductId);
+        if (error && error.code !== "PGRST116") throw new Error("Editable product catalog update failed: " + error.message);
+      }
+    }
+
   };
 
   const updateData = async (collection: string, newData: any) => {

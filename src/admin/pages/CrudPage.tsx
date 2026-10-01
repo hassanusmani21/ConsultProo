@@ -4,7 +4,7 @@ import { useData } from '../../data/DataContext';
 import { uploadAdminFile } from '../../lib/adminUpload';
 import { isCheckoutProduct, productCheckoutPath } from '../../utils/productLinks';
 
-type FieldType = 'text' | 'textarea' | 'number' | 'checkbox' | 'select' | 'list' | 'image' | 'images' | 'file';
+type FieldType = 'text' | 'textarea' | 'number' | 'checkbox' | 'toggle' | 'select' | 'list' | 'image' | 'images' | 'file';
 
 interface FieldConfig {
   path: string;
@@ -81,7 +81,7 @@ const configs: Record<string, CollectionConfig> = {
   },
   ebooks: {
     title: 'Ebooks',
-    description: 'Create, update, and delete digital guides in the shop.',
+    description: 'Create, update, and delete digital guides with separate editable and non-editable versions.',
     collection: 'ebooks',
     fields: [
       { path: 'title', label: 'Title' },
@@ -90,10 +90,12 @@ const configs: Record<string, CollectionConfig> = {
       { path: 'description', label: 'Description', type: 'textarea' },
       { path: 'highlights', label: 'Highlights', type: 'list' },
       { path: 'sampleChapters', label: 'Sample Chapters', type: 'list' },
-      { path: 'price', label: 'Sale Price' },
+      { path: 'price', label: 'Non-editable Price' },
       { path: 'compareAtPrice', label: 'Original Price (optional)', placeholder: 'Must be higher than sale price' },
       { path: 'currency', label: 'Currency', type: 'select', options: ['INR', 'USD', 'AED', 'EUR', 'GBP', 'SGD'] },
-      { path: 'storagePath', label: 'Secure Product File', type: 'file', accept: EBOOK_FILE_ACCEPT },
+      { path: 'storagePath', label: 'Non-editable PDF File', type: 'file', accept: 'application/pdf,.pdf' },
+      { path: 'editablePrice', label: 'Editable Price' },
+      { path: 'editableStoragePath', label: 'Editable File (Word / Excel)', type: 'file', accept: '.doc,.docx,.xls,.xlsx,.csv,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv' },
       { path: 'purchaseUrl', label: 'Purchase URL' },
       { path: 'pagesCount', label: 'Pages Count' },
       { path: 'format', label: 'Format' },
@@ -277,7 +279,7 @@ const emptyItemFor = (config: CollectionConfig) => {
     if (field.type === 'checkbox') value = field.path === 'published';
     if (field.type === 'number') value = 0;
     if (field.type === 'list' || field.type === 'images') value = [];
-    if (field.type === 'select') value = field.path === 'currency' ? 'INR' : (field.options?.[0] ?? '');
+    if (field.type === 'select' || field.type === 'toggle') value = field.path === 'currency' ? 'INR' : (field.options?.[0] ?? '');
     return setValue(item, field.path, value);
   }, {});
 };
@@ -689,7 +691,25 @@ export default function CrudPage({ collection }: CrudPageProps) {
 
               return (
                 <div key={field.path} className={`space-y-2 ${wide ? 'md:col-span-2' : ''}`}>
-                  {field.type === 'checkbox' ? (
+                  {field.type === "toggle" ? (
+                    <fieldset className="space-y-2">
+                      <legend className="block text-xs font-bold uppercase tracking-wider text-[#9a9da8]">{field.label}</legend>
+                      <div className="inline-flex rounded-lg border border-white/10 bg-[#0e1015] p-1" role="group" aria-label={field.label}>
+                        {field.options?.map((option) => (
+                          <button
+                            key={option}
+                            type="button"
+                            onClick={() => updateField(field, option)}
+                            aria-pressed={(value || field.options?.[0]) === option}
+                            className={(value || field.options?.[0]) === option ? "rounded-md bg-[#bfa37c] px-3 py-2 text-xs font-bold uppercase tracking-wider text-[#0e1015] shadow-sm" : "rounded-md px-3 py-2 text-xs font-bold uppercase tracking-wider text-[#9a9da8] transition-colors hover:text-white"}
+                          >
+                            {option}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-xs leading-relaxed text-[#9a9da8]">Editable kits can be changed after download; non-editable kits are read-only PDFs.</p>
+                    </fieldset>
+                  ) : field.type === "checkbox" ? (
                     <label className="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-lg border border-white/10 bg-[#0e1015] px-4 py-2.5">
                       <input
                         type="checkbox"

@@ -110,7 +110,10 @@ export interface EbookProduct {
   currency: string;
   pdfUrl?: string;
   storagePath?: string;
+  editablePrice?: string | number;
+  editableStoragePath?: string;
   pdfStoragePath?: string;
+  /** Base fields describe the non-editable PDF; optional fields configure an editable version. */
   deliveryType?: 'file' | 'pdf' | 'video' | 'course';
   purchaseUrl: string;
   pagesCount: string;

@@ -36,6 +36,8 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
   const section = data.sections.shop;
   type ShopCategory = 'all' | 'ebooks' | 'plans' | 'prompts';
   const [activeCategory, setActiveCategory] = useState<ShopCategory>('all');
+  type EbookVersionId = "editable" | "non-editable";
+  const [selectedEbookVersionId, setSelectedEbookVersionId] = useState<EbookVersionId>("non-editable");
   const [selectedEbook, setSelectedEbook] = useState<EbookProduct | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<VillaPlan | null>(null);
   const [selectedPrompt, setSelectedPrompt] = useState<AiPromptData | null>(null);
@@ -44,6 +46,11 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
   const [selectedPlotSize, setSelectedPlotSize] = useState<string>('');
   const ebooksList = data.ebooks.filter((item: EbookProduct & { published?: boolean }) => item.published !== false);
   const villaPlans = data.villaPlans.filter((item: VillaPlan & { published?: boolean }) => item.published !== false);
+  const selectedEbookVersion = selectedEbook
+    ? (selectedEbookVersionId === "editable" && Number(selectedEbook.editablePrice) > 0
+      ? { id: "editable" as const, label: "Editable", price: selectedEbook.editablePrice, productId: selectedEbook.id + ":editable" }
+      : { id: "non-editable" as const, label: "Non-editable", price: selectedEbook.price, productId: selectedEbook.id })
+    : null;
   const aiPromptsLibrary = data.aiPrompts.filter((item: AiPromptData & { published?: boolean }) => item.published !== false);
 
   useEffect(() => {
@@ -59,6 +66,7 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
     soundManager.playClick();
     setSelectedEbook(ebook);
   };
+    setSelectedEbookVersionId(Number(ebook.editablePrice) > 0 ? "editable" : "non-editable");
 
   const handleOpenPlan = (plan: VillaPlan) => {
     soundManager.playClick();
@@ -216,7 +224,7 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
                 <BookOpen className="w-4 h-4 text-[#9e825d]" />
                 <span>EBOOKS & ARCHITECTURAL GUIDES</span>
               </div>
-              <span className="text-[11px] font-sans text-[#747783] font-medium">Instant PDF + Template Downloads</span>
+              <span className="text-[11px] font-sans text-[#747783] font-medium">Choose your version in product details</span>
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-5">
@@ -554,9 +562,35 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
 
               {/* Purchase Footer */}
               <div className="flex flex-col gap-4 border-t border-[#12141a]/10 pt-4 sm:flex-row sm:items-center sm:justify-between">
+              <section className="border-t border-[#12141a]/10 pt-5">
+                <h4 className="text-xs font-bold uppercase tracking-[0.16em] text-[#12141a]">Choose Your Version</h4>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  {Number(selectedEbook.editablePrice) > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedEbookVersionId("editable")}
+                      aria-pressed={selectedEbookVersionId === "editable"}
+                      className={selectedEbookVersionId === "editable" ? "rounded-xl border-2 border-[#bfa37c] bg-[#faf8f5] p-4 text-left shadow-sm" : "rounded-xl border border-[#12141a]/15 bg-white p-4 text-left transition-colors hover:border-[#bfa37c]"}
+                    >
+                      <span className="block text-xs font-bold uppercase tracking-[0.14em] text-[#12141a]">● Editable</span>
+                      <PriceDisplay price={selectedEbook.editablePrice} currency={selectedEbook.currency} currentClassName="mt-2 block text-lg font-extrabold text-[#12141a]" />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedEbookVersionId("non-editable")}
+                    aria-pressed={selectedEbookVersionId === "non-editable"}
+                    className={selectedEbookVersionId === "non-editable" ? "rounded-xl border-2 border-[#bfa37c] bg-[#faf8f5] p-4 text-left shadow-sm" : "rounded-xl border border-[#12141a]/15 bg-white p-4 text-left transition-colors hover:border-[#bfa37c]"}
+                  >
+                    <span className="block text-xs font-bold uppercase tracking-[0.14em] text-[#12141a]">○ Non-editable</span>
+                    <PriceDisplay price={selectedEbook.price} compareAtPrice={selectedEbook.compareAtPrice} currency={selectedEbook.currency} currentClassName="mt-2 block text-lg font-extrabold text-[#12141a]" />
+                  </button>
+                </div>
+              </section>
+
                 <div>
                   <span className="text-[10px] font-sans text-[#747783] uppercase tracking-wider block">One-time Investment</span>
-                  <PriceDisplay price={selectedEbook.price} compareAtPrice={selectedEbook.compareAtPrice} currency={selectedEbook.currency} currentClassName="text-2xl font-sans font-extrabold text-[#12141a]" />
+                  <PriceDisplay price={selectedEbookVersion?.price || selectedEbook.price} compareAtPrice={selectedEbookVersion?.id === "non-editable" ? selectedEbook.compareAtPrice : undefined} currency={selectedEbook.currency} currentClassName="text-2xl font-sans font-extrabold text-[#12141a]" />
                 </div>
 
                 <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
@@ -571,7 +605,7 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
                     </a>
                   )}
                   <button
-                    onClick={() => handleCheckout('ebooks', selectedEbook.id)}
+                    onClick={() => handleCheckout('ebooks', selectedEbookVersion?.productId || selectedEbook.id)}
                     className="flex items-center justify-center gap-2 rounded-xl bg-[#12141a] px-6 py-3 text-xs font-sans font-bold uppercase tracking-[0.14em] text-[#ffffff] shadow-xl transition-all hover:bg-[#bfa37c] hover:text-[#12141a] active:scale-95"
                   >
                   <>

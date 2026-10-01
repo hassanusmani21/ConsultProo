@@ -160,6 +160,20 @@ export default function CheckoutPage() {
           ? 'digitalProducts'
         : collection;
     const records = data[collectionKey] || [];
+    if (collectionKey === "ebooks" && productId?.endsWith(":editable")) {
+      const ebookId = productId.slice(0, -":editable".length);
+      const ebook = records.find((item: any) => item.id === ebookId);
+      if (ebook && Number(ebook.editablePrice) > 0) {
+        return {
+          ...ebook,
+          id: productId,
+          title: ebook.title + " — Editable",
+          price: ebook.editablePrice,
+          storagePath: ebook.editableStoragePath,
+          deliveryType: "file",
+        };
+      }
+    }
     return records.find((item: any) => item.id === productId);
   }, [collection, data, productId]);
 

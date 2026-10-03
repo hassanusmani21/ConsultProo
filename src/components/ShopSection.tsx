@@ -25,6 +25,7 @@ import { PriceDisplay } from './PriceDisplay';
 import { getFreePromptCompareAtPrice, getFreePromptDownloadUrl, hasPromptFile } from '../utils/freePromptAccess';
 import { getPromptShareUrl } from '../utils/promptLinks';
 import { downloadFileFromUrl } from '../utils/downloadFile';
+import { PromptDetail } from './prompt-detail/PromptDetail';
 
 interface ShopSectionProps {
   onSetCursorText?: (text?: string) => void;
@@ -100,13 +101,6 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
 
     await navigator.clipboard.writeText(prompt.fullPrompt);
     setCopiedPromptId(prompt.id);
-    soundManager.playClick();
-    setTimeout(() => setCopiedPromptId(null), 2000);
-  };
-
-  const handleCopyStep = async (promptId: string, stepId: string, promptText: string) => {
-    await navigator.clipboard.writeText(promptText);
-    setCopiedPromptId(`${promptId}:${stepId}`);
     soundManager.playClick();
     setTimeout(() => setCopiedPromptId(null), 2000);
   };
@@ -498,7 +492,7 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.96, y: 15 }}
               transition={{ duration: 0.25 }}
-              className="relative z-10 max-h-[calc(100dvh-1.5rem)] w-full max-w-3xl space-y-6 overflow-y-auto rounded-2xl border border-[#12141a]/15 bg-[#ffffff] p-6 text-[#12141a] shadow-2xl no-scrollbar sm:max-h-[90vh] sm:p-8"
+              className="relative z-10 max-h-[calc(100dvh-1.5rem)] w-full max-w-7xl space-y-6 overflow-y-auto rounded-2xl border border-[#12141a]/15 bg-[#ffffff] p-6 text-[#12141a] shadow-2xl no-scrollbar sm:max-h-[90vh] sm:p-8"
             >
               <div className="sticky top-0 z-20 -mx-6 -mt-6 flex items-center justify-between border-b border-[#12141a]/10 bg-white/95 px-6 pb-4 pt-6 backdrop-blur sm:-mx-8 sm:-mt-8 sm:px-8 sm:pt-8">
                 <div className="text-[10px] font-sans font-bold text-[#9e825d] uppercase tracking-[0.2em]">
@@ -512,196 +506,7 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-12 gap-6 items-start">
-                <div className="sm:col-span-5 aspect-[3/4] rounded-xl overflow-hidden bg-[#ebe7df] border border-[#12141a]/10 shadow-md">
-                  <img
-                    src={selectedEbook.coverImage}
-                    alt={selectedEbook.title}
-                    className="w-full h-full object-contain"
-                  />
-                </div>
-
-                <div className="sm:col-span-7 space-y-4">
-                  <div>
-                    <h3 className="text-2xl font-sans font-bold text-[#12141a]">
-                      {selectedEbook.title}
-                    </h3>
-                    <p className="text-xs font-sans text-[#9e825d] font-semibold mt-1">
-                      {selectedEbook.subtitle}
-                    </p>
-                  </div>
-
-                  <p className="text-xs sm:text-sm font-sans text-[#4a4d57] leading-relaxed">
-                    {selectedEbook.description}
-                  </p>
-
-                  <div className="space-y-2 pt-2">
-                    <div className="text-[10px] font-sans font-bold text-[#12141a] uppercase tracking-wider">
-                      What is Included:
-                    </div>
-                    {selectedEbook.highlights.map((h, i) => (
-                      <div key={i} className="flex items-start gap-2 text-xs font-sans text-[#12141a]">
-                        <Check className="w-3.5 h-3.5 text-[#9e825d] shrink-0 mt-0.5 stroke-[2.5]" />
-                        <span>{h}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  {selectedEbook.sampleChapters && (
-                    <div className="p-3 rounded-lg bg-[#faf8f5] border border-[#12141a]/10 space-y-1.5 text-xs font-sans">
-                      <div className="text-[10px] font-bold text-[#747783] uppercase tracking-wider">
-                        Curriculum Outline:
-                      </div>
-                      {selectedEbook.sampleChapters.map((ch, i) => (
-                        <div key={i} className="text-[#4a4d57] text-[11px] truncate">
-                          {ch}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <section className="border-t border-[#12141a]/10 pt-5">
-                <h4 className="text-xs font-bold uppercase tracking-[0.16em] text-[#12141a]">Choose Your Version</h4>
-                <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  {Number(selectedEbook.editablePrice) > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setSelectedEbookVersionId("editable")}
-                      aria-pressed={selectedEbookVersionId === "editable"}
-                      className={selectedEbookVersionId === "editable" ? "rounded-xl border-2 border-[#bfa37c] bg-[#faf8f5] p-4 text-left shadow-sm" : "rounded-xl border border-[#12141a]/15 bg-white p-4 text-left transition-colors hover:border-[#bfa37c]"}
-                    >
-                      <span className="block text-xs font-bold uppercase tracking-[0.14em] text-[#12141a]">● Editable</span>
-                      <PriceDisplay price={selectedEbook.editablePrice} currency={selectedEbook.currency} currentClassName="mt-2 block text-lg font-extrabold text-[#12141a]" />
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setSelectedEbookVersionId("non-editable")}
-                    aria-pressed={selectedEbookVersionId === "non-editable"}
-                    className={selectedEbookVersionId === "non-editable" ? "rounded-xl border-2 border-[#bfa37c] bg-[#faf8f5] p-4 text-left shadow-sm" : "rounded-xl border border-[#12141a]/15 bg-white p-4 text-left transition-colors hover:border-[#bfa37c]"}
-                  >
-                    <span className="block text-xs font-bold uppercase tracking-[0.14em] text-[#12141a]">○ Non-editable</span>
-                    <PriceDisplay price={selectedEbook.price} compareAtPrice={selectedEbook.compareAtPrice} currency={selectedEbook.currency} currentClassName="mt-2 block text-lg font-extrabold text-[#12141a]" />
-                  </button>
-                </div>
-              </section>
-
-              {/* Purchase Footer */}
-              <div className="flex flex-col gap-4 border-t border-[#12141a]/10 pt-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <span className="text-[10px] font-sans text-[#747783] uppercase tracking-wider block">One-time Investment</span>
-                  <PriceDisplay price={selectedEbookVersion?.price || selectedEbook.price} compareAtPrice={selectedEbookVersion?.id === "non-editable" ? selectedEbook.compareAtPrice : undefined} currency={selectedEbook.currency} currentClassName="text-2xl font-sans font-extrabold text-[#12141a]" />
-                </div>
-
-                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
-                  {selectedEbook.pdfUrl && (
-                    <a
-                      href={selectedEbook.pdfUrl}
-                      download
-                      className="flex items-center justify-center gap-2 rounded-xl border border-[#12141a]/15 bg-[#f2eee6] px-5 py-3 text-xs font-bold uppercase tracking-[0.14em] text-[#12141a] transition-all hover:bg-[#ebe7df]"
-                    >
-                      <Download className="h-4 w-4" />
-                      <span>Download PDF</span>
-                    </a>
-                  )}
-                  <button
-                    onClick={() => handleCheckout('ebooks', selectedEbookVersion?.productId || selectedEbook.id)}
-                    className="flex items-center justify-center gap-2 rounded-xl bg-[#12141a] px-6 py-3 text-xs font-sans font-bold uppercase tracking-[0.14em] text-[#ffffff] shadow-xl transition-all hover:bg-[#bfa37c] hover:text-[#12141a] active:scale-95"
-                  >
-                  <>
-                    <Download className="w-4 h-4" />
-                    <span>BUY NOW · INSTANT DOWNLOAD</span>
-                  </>
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* ================= MODAL: PROMPT MATRIX DETAILS ================= */}
-      <AnimatePresence>
-        {selectedPrompt && (
-          <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/75 p-3 backdrop-blur-md sm:items-center sm:p-6">
-            <div className="fixed inset-0" onClick={() => setSelectedPrompt(null)} />
-
-            <motion.div
-              initial={{ opacity: 0, scale: 0.96, y: 15 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.96, y: 15 }}
-              transition={{ duration: 0.25 }}
-              className="relative z-10 max-h-[calc(100dvh-1.5rem)] w-full max-w-3xl space-y-6 overflow-y-auto rounded-2xl border border-[#12141a]/15 bg-[#ffffff] p-6 text-[#12141a] shadow-2xl no-scrollbar sm:max-h-[90vh] sm:p-8"
-            >
-              <div className="sticky top-0 z-20 -mx-6 -mt-6 flex items-center justify-between border-b border-[#12141a]/10 bg-white/95 px-6 pb-4 pt-6 backdrop-blur sm:-mx-8 sm:-mt-8 sm:px-8 sm:pt-8">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-mono font-bold text-[#9e825d]">{selectedPrompt.code}</span>
-                  <span className="text-[#12141a]/20">|</span>
-                  <span className="text-xs font-sans text-[#4a4d57] uppercase font-bold">{selectedPrompt.category}</span>
-                </div>
-                <button
-                  onClick={() => setSelectedPrompt(null)}
-                  className="p-2 rounded-full bg-[#f2eee6] hover:bg-[#ebe7df] text-[#12141a]"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-12 gap-6 items-start">
-                <div className="sm:col-span-4">
-                  <div className="mx-auto aspect-[9/16] w-full max-w-[300px] overflow-hidden rounded-xl border border-[#12141a]/10 bg-[#ebe7df] shadow-md">
-                  <img
-                    src={selectedPrompt.thumbnail || selectedPrompt.resultImage}
-                    alt={selectedPrompt.title}
-                    className="h-full w-full object-cover"
-                  />
-                  </div>
-                </div>
-
-                <div className="sm:col-span-8 space-y-4">
-                  <div>
-                    <h3 className="text-2xl font-sans font-bold text-[#12141a]">
-                      {selectedPrompt.title}
-                    </h3>
-                  </div>
-
-                  <div className="rounded-xl border border-[#12141a]/10 bg-[#faf8f5] p-4">
-                    <div className="text-[10px] font-sans font-bold uppercase tracking-wider text-[#9e825d]">Description</div>
-                    <p className="mt-2 max-h-28 overflow-y-auto pr-2 text-xs leading-relaxed text-[#4a4d57] custom-scrollbar">
-                      {selectedPrompt.previewText || selectedPrompt.fullPrompt}
-                    </p>
-                  </div>
-                  {selectedPrompt.steps && selectedPrompt.steps.length > 1 ? (
-                    <div className="space-y-4">
-                      {[...selectedPrompt.steps].sort((a, b) => a.stepOrder - b.stepOrder).map((step, index) => (
-                        <section key={step.id} className="overflow-hidden rounded-xl border border-[#12141a]/10 bg-white">
-                          <div className="border-b border-[#12141a]/10 px-4 py-3 text-[10px] font-sans font-bold uppercase tracking-wider text-[#9e825d]">Step {index + 1}</div>
-                          {step.thumbnail && <img src={step.thumbnail} alt={`${selectedPrompt.title} — Step ${index + 1}`} loading="lazy" className="max-h-72 w-full object-cover" />}
-                          <div className="p-4">
-                            <pre className="whitespace-pre-wrap break-words rounded-lg bg-[#12141a] p-3 text-xs leading-relaxed text-white/85">{step.promptText}</pre>
-                            {selectedPrompt.type === 'FREE' && <button type="button" onClick={() => void handleCopyStep(selectedPrompt.id, step.id, step.promptText)} className="mt-3 inline-flex items-center justify-center gap-2 rounded-lg bg-[#12141a] px-4 py-2.5 text-xs font-sans font-bold uppercase tracking-wider text-white transition-colors hover:bg-[#bfa37c] hover:text-[#12141a]">
-                              {copiedPromptId === `${selectedPrompt.id}:${step.id}` ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
-                              <span>{copiedPromptId === `${selectedPrompt.id}:${step.id}` ? 'Copied' : 'Copy Prompt'}</span>
-                            </button>}
-                          </div>
-                        </section>
-                      ))}
-                    </div>
-                  ) : selectedPrompt.type === 'FREE' && selectedPrompt.fullPrompt !== selectedPrompt.previewText && (
-                    <div className="rounded-xl border border-[#12141a] bg-[#12141a] p-4 shadow-lg shadow-[#12141a]/10">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="text-[10px] font-sans font-bold uppercase tracking-wider text-[#d8be96]">Prompt</div>
-                        <div className="text-[10px] font-sans uppercase tracking-wider text-white/45">Ready to copy</div>
-                      </div>
-                      <p className="mt-3 max-h-44 overflow-y-auto whitespace-pre-wrap pr-2 text-xs leading-relaxed text-white/85 custom-scrollbar">
-                          {selectedPrompt.fullPrompt}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
+              <PromptDetail prompt={selectedPrompt} canCopy={selectedPrompt.type === 'FREE'} showHeader={false} />
 
               <div className="pt-4 border-t border-[#12141a]/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>

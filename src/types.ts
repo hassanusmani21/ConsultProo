@@ -44,6 +44,9 @@ export interface AiPromptData {
     materials?: string;
   };
   description?: string;
+  subtitle?: string;
+  tags?: string[];
+  images?: string[];
   steps?: AiPromptStep[];
   createdAt?: string;
   updatedAt?: string;
@@ -55,6 +58,13 @@ export interface AiPromptStep {
   stepOrder: number;
   promptText: string;
   thumbnail: string;
+  title?: string;
+  subtitle?: string;
+  description?: string;
+  tips?: string[];
+  negativePrompt?: string;
+  parameters?: Record<string, string | number>;
+  notes?: string;
 }
 
 export interface Project {

@@ -620,7 +620,7 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
       {/* ================= MODAL: PROMPT MATRIX DETAILS ================= */}
       <AnimatePresence>
         {selectedPrompt && (
-          <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/75 p-3 backdrop-blur-md sm:items-center sm:p-6">
+          <div className="fixed inset-0 z-50 flex h-dvh items-center justify-center overflow-hidden overscroll-contain bg-black/75 p-2 backdrop-blur-md sm:p-4">
             <div className="fixed inset-0" onClick={() => setSelectedPrompt(null)} />
 
             <motion.div
@@ -628,9 +628,9 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.96, y: 15 }}
               transition={{ duration: 0.25 }}
-              className="relative z-10 max-h-[calc(100dvh-1.5rem)] w-full max-w-7xl space-y-6 overflow-y-auto rounded-2xl border border-[#12141a]/15 bg-[#ffffff] p-6 text-[#12141a] shadow-2xl no-scrollbar sm:max-h-[90vh] sm:p-8"
+              className="relative z-10 flex h-[calc(100dvh-1rem)] min-h-0 w-full max-w-[1500px] flex-col overflow-hidden rounded-2xl border border-[#12141a]/15 bg-[#ffffff] p-3 text-[#12141a] shadow-2xl sm:h-[calc(100dvh-2rem)] sm:p-5"
             >
-              <div className="sticky top-0 z-20 -mx-6 -mt-6 flex items-center justify-between border-b border-[#12141a]/10 bg-white/95 px-6 pb-4 pt-6 backdrop-blur sm:-mx-8 sm:-mt-8 sm:px-8 sm:pt-8">
+              <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[#12141a]/10 pb-3 pt-1">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-mono font-bold text-[#9e825d]">{selectedPrompt.code}</span>
                   <span className="text-[#12141a]/20">|</span>
@@ -644,9 +644,9 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
                 </button>
               </div>
 
-              <PromptDetail prompt={selectedPrompt} canCopy={selectedPrompt.type === 'FREE'} showHeader={false} />
+              <div className="min-h-0 flex-1 overflow-hidden py-3"><PromptDetail prompt={selectedPrompt} canCopy={selectedPrompt.type === 'FREE'} showHeader={false} compactViewport /></div>
 
-              <div className="pt-4 border-t border-[#12141a]/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex shrink-0 flex-col justify-between gap-3 border-t border-[#12141a]/10 pt-3 sm:flex-row sm:items-center">
                 <div>
                   <span className="text-[10px] font-sans text-[#747783] uppercase tracking-wider block">
                     {selectedPrompt.type === 'FREE' ? 'Free Prompt' : 'Premium Prompt Matrix'}

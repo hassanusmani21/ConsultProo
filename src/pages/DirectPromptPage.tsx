@@ -70,10 +70,10 @@ export default function DirectPromptPage() {
       <GridOverlay isVisible />
       <Navbar activeDestination="shop" onNavigate={handleNavigate} onNotify={() => undefined} />
 
-      <main className="relative z-10 h-dvh overflow-hidden px-3 pb-3 pt-24 sm:px-6 sm:pt-24 lg:px-8">
+      <main className="relative z-10 h-dvh overflow-hidden px-3 pb-3 pt-20 sm:px-6 sm:pt-20 lg:px-8">
         <div className="mx-auto h-full min-h-0 max-w-7xl">
           {prompt ? (
-            <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-white/15 bg-[#ffffff] text-[#12141a] shadow-2xl shadow-black/45">
+            <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[#faf8f5] text-[#12141a]">
               <div className="flex shrink-0 flex-col gap-2 border-b border-[#12141a]/10 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
                 <div className="flex min-w-0 items-center gap-2">
                   <span className="text-xs font-mono font-bold text-[#9e825d]">{prompt.code}</span>
@@ -89,7 +89,7 @@ export default function DirectPromptPage() {
                 </div>
               </div>
 
-              <div className="min-h-0 flex-1 overflow-hidden p-2 sm:p-3"><PromptDetail prompt={prompt} canCopy={prompt.type === 'FREE'} showHeader={false} compactViewport /></div>
+              <div className="min-h-0 flex-1 overflow-hidden"><PromptDetail prompt={prompt} canCopy={prompt.type === 'FREE'} showHeader={false} compactViewport /></div>
 
               <div className="flex shrink-0 flex-col gap-2 border-t border-[#12141a]/10 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
                 <div>

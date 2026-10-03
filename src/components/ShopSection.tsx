@@ -644,7 +644,7 @@ export const ShopSection: React.FC<ShopSectionProps> = ({ onSetCursorText, onNav
                 </button>
               </div>
 
-              <div className="min-h-0 flex-1 overflow-hidden py-3"><PromptDetail prompt={selectedPrompt} canCopy={selectedPrompt.type === 'FREE'} showHeader={false} compactViewport /></div>
+              <div className="min-h-0 flex-1 overflow-hidden"><PromptDetail prompt={selectedPrompt} canCopy={selectedPrompt.type === 'FREE'} showHeader={false} compactViewport /></div>
 
               <div className="flex shrink-0 flex-col justify-between gap-3 border-t border-[#12141a]/10 pt-3 sm:flex-row sm:items-center">
                 <div>

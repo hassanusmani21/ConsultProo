@@ -65,16 +65,16 @@ export default function DirectPromptPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0e1015] text-[#f5f4ef] selection:bg-[#bfa37c] selection:text-[#0e1015] font-sans relative antialiased overflow-hidden">
+    <div className="relative h-dvh overflow-hidden bg-[#0e1015] font-sans text-[#f5f4ef] antialiased selection:bg-[#bfa37c] selection:text-[#0e1015]">
       <CustomCursor />
       <GridOverlay isVisible />
       <Navbar activeDestination="shop" onNavigate={handleNavigate} onNotify={() => undefined} />
 
-      <main className="relative z-10 min-h-screen px-4 pb-10 pt-28 sm:px-6 sm:pt-32 lg:px-8">
-        <div className="mx-auto max-w-7xl">
+      <main className="relative z-10 h-dvh overflow-hidden px-3 pb-3 pt-24 sm:px-6 sm:pt-24 lg:px-8">
+        <div className="mx-auto h-full min-h-0 max-w-7xl">
           {prompt ? (
-            <div className="rounded-2xl border border-white/15 bg-[#ffffff] text-[#12141a] shadow-2xl shadow-black/45">
-              <div className="flex flex-col gap-3 border-b border-[#12141a]/10 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+            <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-white/15 bg-[#ffffff] text-[#12141a] shadow-2xl shadow-black/45">
+              <div className="flex shrink-0 flex-col gap-2 border-b border-[#12141a]/10 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
                 <div className="flex min-w-0 items-center gap-2">
                   <span className="text-xs font-mono font-bold text-[#9e825d]">{prompt.code}</span>
                   <span className="text-[#12141a]/20">|</span>
@@ -89,9 +89,9 @@ export default function DirectPromptPage() {
                 </div>
               </div>
 
-              <div className="p-5 sm:p-8"><PromptDetail prompt={prompt} canCopy={prompt.type === 'FREE'} showHeader={false} /></div>
+              <div className="min-h-0 flex-1 overflow-hidden p-2 sm:p-3"><PromptDetail prompt={prompt} canCopy={prompt.type === 'FREE'} showHeader={false} compactViewport /></div>
 
-              <div className="flex flex-col gap-4 border-t border-[#12141a]/10 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-8">
+              <div className="flex shrink-0 flex-col gap-2 border-t border-[#12141a]/10 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
                 <div>
                   <span className="block text-[10px] font-sans uppercase tracking-wider text-[#747783]">{prompt.type === 'FREE' ? 'Free Prompt' : 'Premium Prompt Matrix'}</span>
                   <PriceDisplay price={prompt.type === 'FREE' ? 0 : prompt.price || '29'} compareAtPrice={prompt.type === 'FREE' ? getFreePromptCompareAtPrice(prompt) : prompt.compareAtPrice} currency={prompt.currency} currentClassName="text-2xl font-sans font-extrabold text-[#12141a]" />

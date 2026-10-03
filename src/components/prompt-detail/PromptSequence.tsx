@@ -6,6 +6,7 @@ interface PromptSequenceProps {
   steps: AiPromptStep[];
   promptTitle: string;
   canCopy: boolean;
+  compactViewport?: boolean;
 }
 
 const stepTitle = (step: AiPromptStep, index: number) => step.title || `Prompt step ${index + 1}`;
@@ -17,7 +18,7 @@ export function PromptSequenceHeading({ steps }: { steps: AiPromptStep[] }) {
   </header>;
 }
 
-export function PromptSequence({ steps, promptTitle, canCopy }: PromptSequenceProps) {
+export function PromptSequence({ steps, promptTitle, canCopy, compactViewport = false }: PromptSequenceProps) {
   const [openSteps, setOpenSteps] = useState<Set<string>>(() => new Set(steps[0] ? [steps[0].id] : []));
   const [copiedStep, setCopiedStep] = useState<string | null>(null);
 
@@ -30,7 +31,7 @@ export function PromptSequence({ steps, promptTitle, canCopy }: PromptSequencePr
     window.setTimeout(() => setCopiedStep(current => current === step.id ? null : current), 2000);
   };
 
-  return <section aria-label="Prompt workflow steps" className="mt-4 min-w-0 xl:min-h-0 xl:flex-1 xl:overflow-y-auto xl:overscroll-contain xl:pr-2">
+  return <section aria-label="Prompt workflow steps" className={compactViewport ? "mt-3 min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain pr-2" : "mt-4 min-w-0 xl:min-h-0 xl:flex-1 xl:overflow-y-auto xl:overscroll-contain xl:pr-2"}>
     <div className="space-y-2">{steps.map((step, index) => <PromptStep key={step.id} step={step} index={index} promptTitle={promptTitle} canCopy={canCopy} isOpen={openSteps.has(step.id)} copied={copiedStep === step.id} onToggle={() => setOpenSteps(current => { const next = new Set(current); next.has(step.id) ? next.delete(step.id) : next.add(step.id); return next; })} onCopy={copyStep} />)}</div>
   </section>;
 }
